@@ -35,8 +35,8 @@ CREATE TRIGGER on_auth_user_created
 -- 3. Bảng AI Settings (Lưu cấu hình API Key)
 CREATE TABLE ai_settings (
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE PRIMARY KEY,
-  openai_api_key TEXT,
-  default_model TEXT DEFAULT 'gpt-4o',
+  groq_api_key TEXT,
+  default_model TEXT DEFAULT 'llama3-70b-8192',
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE ai_settings ENABLE ROW LEVEL SECURITY;

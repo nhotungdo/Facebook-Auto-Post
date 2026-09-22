@@ -9,12 +9,15 @@ class Settings(BaseSettings):
     SUPABASE_URL: str = ""
     SUPABASE_KEY: str = ""
 
-    # OpenAI Config
-    OPENAI_API_KEY: str = ""
+    # Groq Config
+    GROQ_API_KEY: str = ""
 
     # Facebook Config
     FB_APP_ID: str = ""
     FB_APP_SECRET: str = ""
+
+    # Security
+    ENCRYPTION_KEY: str = ""
 
     # Redis/Celery
     REDIS_URL: str = "redis://localhost:6379/0"

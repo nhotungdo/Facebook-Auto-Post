@@ -6,12 +6,13 @@ import httpx
 from datetime import datetime, timezone
 from typing import Any, Optional, cast
 from typing import TypedDict
-from app.agents.content_creator import AIContentCreator
-from app.services.facebook import FacebookService
+from app.agents.orchestrator import MultiAgentOrchestrator
+from app.core.security import decrypt_token
+from app.services.publishers.facebook import FacebookPublisher
 from app.services.supabase_client import get_supabase_client
 
 logger = logging.getLogger(__name__)
-fb_service = FacebookService()
+fb_service = FacebookPublisher()
 
 
 class PageInfo(TypedDict, total=False):
@@ -44,15 +45,27 @@ def generate_ai_content_task(
     """
     logger.info(f"Generating content for post {post_id} with goal {goal}")
     try:
-        creator = AIContentCreator()
-        content: Optional[str] = creator.create_post(goal=goal, tone=tone)
+        orchestrator = MultiAgentOrchestrator()
+        content, media_url, status_msg = orchestrator.generate_and_review_post(goal=goal, tone=tone)
 
         supabase = get_supabase_client()
-        supabase.table("posts").update(
-            {"content": content or "", "status": "ready"}
-        ).eq("id", post_id).execute()
-
-        return {"status": "success", "post_id": post_id}
+        if content:
+            status = "ready" if status_msg == "Success" else "draft"
+            update_data: dict[str, Any] = {
+                "content": content,
+                "status": status,
+                "error_message": status_msg if status != "ready" else None
+            }
+            if media_url:
+                update_data["media_urls"] = [media_url]
+                
+            supabase.table("posts").update(update_data).eq("id", post_id).execute()
+            return {"status": status, "post_id": post_id, "message": status_msg}
+        else:
+            supabase.table("posts").update(
+                {"status": "failed", "error_message": status_msg}
+            ).eq("id", post_id).execute()
+            return {"status": "error", "post_id": post_id, "error": status_msg}
     except Exception as e:
         logger.error(f"Error generating content for post {post_id}: {e}")
         return {"status": "error", "post_id": post_id, "error": str(e)}
@@ -109,8 +122,8 @@ def _publish_post_sync(post: PostRecord, supabase: Any) -> None:
 
         page_info: PageInfo = raw_page_info
         page_id: str = page_info.get("page_id") or ""
-        access_token: str = page_info.get("access_token") or ""
-        base_url = "https://graph.facebook.com/v20.0"
+        encrypted_token = page_info.get("access_token")
+        access_token: str = decrypt_token(encrypted_token) if encrypted_token else ""
 
         raw_media_urls: Optional[list[str]] = post.get("media_urls")
         media_url: Optional[str] = (
@@ -119,27 +132,15 @@ def _publish_post_sync(post: PostRecord, supabase: Any) -> None:
         post_content: str = post.get("content") or ""
         post_id: str = post.get("id") or ""
 
-        payload: dict[str, str]
-        if media_url:
-            url = f"{base_url}/{page_id}/photos"
-            payload = {
-                "url": media_url,
-                "message": post_content,
-                "access_token": access_token,
-            }
-        else:
-            url = f"{base_url}/{page_id}/feed"
-            payload = {
-                "message": post_content,
-                "access_token": access_token,
-            }
+        response = fb_service.post_to_page_sync(
+            page_id=page_id,
+            access_token=access_token,
+            message=post_content,
+            media_url=media_url
+        )
 
-        with httpx.Client() as client:
-            http_response = client.post(url, data=payload)
-
-        response_data: dict[str, str] = http_response.json()
-
-        if http_response.status_code == 200:
+        if response.get("success"):
+            response_data = response.get("data", {})
             supabase.table("posts").update(
                 {
                     "status": "published",
@@ -156,7 +157,7 @@ def _publish_post_sync(post: PostRecord, supabase: Any) -> None:
                 }
             ).execute()
         else:
-            raise Exception(str(response_data))
+            raise Exception(str(response.get("error")))
 
     except Exception as e:
         failed_id: str = post.get("id") or "unknown"

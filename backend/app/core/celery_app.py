@@ -6,7 +6,7 @@ celery_app = Celery(
     "ai_social_media_agent",
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
-    include=["app.tasks.tasks"],
+    include=["app.tasks.tasks", "app.tasks.analytics_tasks"],
 )
 
 celery_app.conf.update(
@@ -21,5 +21,13 @@ celery_app.conf.update(
             "task": "app.tasks.tasks.check_and_publish_scheduled_posts",
             "schedule": 60.0,  # Run every 60 seconds
         },
+        "sync-post-analytics": {
+            "task": "app.tasks.analytics_tasks.sync_post_analytics",
+            "schedule": 3600.0,  # Run every hour
+        },
     },
+    task_acks_late=True,
+    task_reject_on_worker_lost=True,
+    task_default_retry_delay=60,
+    broker_transport_options={"visibility_timeout": 3600},
 )

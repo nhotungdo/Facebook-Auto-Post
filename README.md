@@ -7,7 +7,7 @@
   [![Facebook API](https://img.shields.io/badge/Meta_Graph_API-v20.0-1877F2?style=for-the-badge&logo=facebook&logoColor=white)](https://developers.facebook.com/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
   [![Next.js](https://img.shields.io/badge/Next.js-16.3-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
-  [![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o-412991?style=for-the-badge&logo=openai&logoColor=white)](https://openai.com/)
+  [![Groq](https://img.shields.io/badge/Groq-Llama--3-f55036?style=for-the-badge&logo=groq&logoColor=white)](https://groq.com/)
   [![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
   [![Celery](https://img.shields.io/badge/Celery-Task_Queue-37814A?style=for-the-badge&logo=celery&logoColor=white)](https://docs.celeryq.dev/)
   [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
@@ -30,7 +30,7 @@
 
 **Facebook Auto-Post** là giải pháp toàn diện giúp các Doanh nghiệp, Agency Marketing và Content Creator tối ưu hóa quy trình quản lý Fanpage. 
 
-Hệ thống kết hợp trí tuệ nhân tạo **OpenAI GPT-4o** để phân tích đối tượng mục tiêu, tự động lên chiến lược nội dung (Content Pillars), tạo bài viết bắt mắt (kèm Hook, CTA, Emoji & Hashtag) và tự động xuất bản bài đăng trực tiếp lên Facebook Pages thông qua **Meta Graph API v20.0** kết hợp với **Celery Task Queue**.
+Hệ thống kết hợp trí tuệ nhân tạo **Groq Llama 3** để phân tích đối tượng mục tiêu, tự động lên chiến lược nội dung (Content Pillars), tạo bài viết bắt mắt (kèm Hook, CTA, Emoji & Hashtag) và tự động xuất bản bài đăng trực tiếp lên Facebook Pages thông qua **Meta Graph API v20.0** kết hợp với **Celery Task Queue**.
 
 ---
 
@@ -99,7 +99,7 @@ flowchart TD
     end
 
     subgraph External ["🌐 External Services"]
-        OpenAI["OpenAI GPT-4o API"]
+        Groq["Groq Llama 3 API"]
         GraphAPI["Meta Facebook Graph API v20.0"]
         Supabase[("Supabase PostgreSQL DB")]
     end
@@ -107,7 +107,7 @@ flowchart TD
     UI -->|HTTP / JSON| API
     API -->|Prompt Request| Strategist
     API -->|Generate Request| Creator
-    Strategist & Creator -->|Chat Completion| OpenAI
+    Strategist & Creator -->|Chat Completion| Groq
     API -->|Store Data| Supabase
     API -->|Queue Schedule| Redis
     Redis --> Celery
@@ -124,7 +124,7 @@ flowchart TD
 | **Frontend** | ![Next.js](https://img.shields.io/badge/Next.js_16-000000?style=flat-square&logo=nextdotjs) ![React](https://img.shields.io/badge/React_19-61DAFB?style=flat-square&logo=react) | Giao diện Single Page App hiện đại, hỗ trợ SSR & Dark/Light Mode. |
 | **Styling** | ![Tailwind CSS](https://img.shields.io/badge/Tailwind_v4-06B6D4?style=flat-square&logo=tailwindcss) ![Shadcn](https://img.shields.io/badge/Shadcn_UI-000000?style=flat-square) | Thiết kế chuẩn UI/UX linh hoạt, component mượt mà. |
 | **Backend** | ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi) ![Python](https://img.shields.io/badge/Python_3.11+-3776AB?style=flat-square&logo=python) | RESTful Async Server tốc độ cao, validation bằng Pydantic. |
-| **AI Agent Core** | ![OpenAI](https://img.shields.io/badge/OpenAI_GPT--4o-412991?style=flat-square&logo=openai) | Mô hình ngôn ngữ lớn chuyên sâu phân tích chiến lược & viết bài. |
+| **AI Agent Core** | ![Groq](https://img.shields.io/badge/Groq_Llama--3-f55036?style=flat-square&logo=groq) | Mô hình ngôn ngữ lớn chuyên sâu phân tích chiến lược & viết bài. |
 | **Social API** | ![Facebook](https://img.shields.io/badge/Facebook_Graph_API_v20.0-1877F2?style=flat-square&logo=facebook) | Tương tác trực tiếp với Meta Graph API để đẩy bài và lấy thông tin Page. |
 | **Task Queue** | ![Celery](https://img.shields.io/badge/Celery-37814A?style=flat-square&logo=celery) ![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat-square&logo=redis) | Xử lý tác vụ lên lịch đăng bài bất đồng bộ. |
 | **Database** | ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase) | Cơ sở dữ liệu PostgreSQL lưu trữ bài viết, trang & trạng thái. |
@@ -170,8 +170,8 @@ VERSION="1.0.0"
 SUPABASE_URL="https://your-supabase-project.supabase.co"
 SUPABASE_KEY="your-supabase-anon-or-service-key"
 
-# OpenAI API Key
-OPENAI_API_KEY="sk-proj-your-openai-api-key"
+# Groq API Key
+GROQ_API_KEY="gsk_your-groq-api-key"
 
 # Meta Facebook App Credentials
 FB_APP_ID="your-facebook-app-id"

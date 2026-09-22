@@ -5,24 +5,27 @@ from app.core.config import settings
 
 
 def _get_openai_client() -> OpenAI:
-    return OpenAI(api_key=settings.OPENAI_API_KEY)
+    return OpenAI(
+        api_key=settings.GROQ_API_KEY, 
+        base_url="https://api.groq.com/openai/v1"
+    )
 
 
-class AIContentCreator:
+class CopywriterAgent:
     """
     Sinh nội dung bài đăng Facebook dựa trên chiến lược và yêu cầu cụ thể.
     """
 
     def __init__(self):
         self.client: Optional[OpenAI] = None
-        if settings.OPENAI_API_KEY:
+        if settings.GROQ_API_KEY:
             self.client = _get_openai_client()
 
     def create_post(
         self, goal: str, tone: str, brand_context: str = ""
-    ) -> Optional[str]:
+    ) -> tuple[Optional[str], Optional[dict]]:
         if not self.client:
-            return f"Mock Post Content for goal: {goal} with {tone} tone."
+            return f"Mock Post Content for goal: {goal} with {tone} tone.", None
 
         prompt = f"""
         Bạn là một người viết nội dung quảng cáo chuyên nghiệp trên Facebook.
@@ -38,7 +41,7 @@ class AIContentCreator:
         - Sử dụng emoji phù hợp.
         """
         response = self.client.chat.completions.create(
-            model="gpt-4o",
+            model="llama3-70b-8192",
             messages=[
                 {
                     "role": "system",
@@ -49,4 +52,12 @@ class AIContentCreator:
                 {"role": "user", "content": prompt},
             ],
         )
-        return response.choices[0].message.content
+        content = response.choices[0].message.content
+        usage = None
+        if response.usage:
+            usage = {
+                "prompt_tokens": response.usage.prompt_tokens,
+                "completion_tokens": response.usage.completion_tokens,
+                "total_tokens": response.usage.total_tokens,
+            }
+        return content, usage
