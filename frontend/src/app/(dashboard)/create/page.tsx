@@ -1,7 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @next/next/no-img-element */
 "use client"
 
 import * as React from "react"
-import { Sparkles, CalendarIcon, Save, Loader2, Send } from "lucide-react"
+import { Sparkles, CalendarIcon, Save, Loader2, Send, ImageIcon, X, Lightbulb, RefreshCcw, SmilePlus, ChevronDown, ChevronUp } from "lucide-react"
+import EmojiPicker from "emoji-picker-react"
+import { toast } from "sonner"
 import { Facebook } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
@@ -26,19 +30,60 @@ export default function CreatePost() {
   const [selectedPage, setSelectedPage] = React.useState("")
   
   const [pages, setPages] = React.useState<Page[]>([])
+  const [media, setMedia] = React.useState<File[]>([])
   
   const [scheduledAt, setScheduledAt] = React.useState("")
   const [isScheduling, setIsScheduling] = React.useState(false)
   const [isGenerating, setIsGenerating] = React.useState(false)
+  const [isRewriting, setIsRewriting] = React.useState(false)
   const [isPublishing, setIsPublishing] = React.useState(false)
+  const [userName, setUserName] = React.useState("")
+  
+  const [targetAudience, setTargetAudience] = React.useState("")
+  const [keywords, setKeywords] = React.useState("")
+  const [length, setLength] = React.useState("medium")
+  const [showAdvanced, setShowAdvanced] = React.useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = React.useState(false)
+  const [isSavingDraft, setIsSavingDraft] = React.useState(false)
   
   const { workspaceId, isLoading: isWorkspaceLoading } = useWorkspace()
+
+  const uploadMediaFiles = async (): Promise<string[]> => {
+    if (media.length === 0) return []
+    const urls: string[] = []
+    
+    for (const file of media) {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+      const filePath = `${workspaceId}/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('post_media')
+        .upload(filePath, file)
+
+      if (uploadError) {
+        console.error("Lỗi upload:", uploadError)
+        throw new Error(`Lỗi tải lên file ${file.name}`)
+      }
+
+      const { data } = supabase.storage
+        .from('post_media')
+        .getPublicUrl(filePath)
+      
+      urls.push(data.publicUrl)
+    }
+    
+    return urls
+  }
 
   React.useEffect(() => {
     const fetchPages = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
+        
+        // Cập nhật tên người dùng để hiển thị preview
+        setUserName(user.user_metadata?.full_name || user.user_metadata?.name || "Người dùng Facebook")
 
         const { data, error } = await supabase
           .from('facebook_pages')
@@ -64,7 +109,7 @@ export default function CreatePost() {
 
   const handleGenerate = async () => {
     if (!goal || !selectedPage) {
-      alert("Vui lòng nhập mục tiêu và chọn trang!")
+      toast.error("Vui lòng nhập mục tiêu và chọn trang!")
       return
     }
 
@@ -83,27 +128,78 @@ export default function CreatePost() {
           goal: goal,
           tone: tone,
           page_id: selectedPage,
-          workspace_id: workspaceId // Add workspace_id if backend needs it, usually good practice
+          workspace_id: workspaceId,
+          target_audience: targetAudience,
+          keywords: keywords,
+          length: length
         })
       })
 
       if (!res.ok) throw new Error("Failed to generate")
       const data = await res.json()
       setContent(data.data.content)
-    } catch (error) {
-      console.error(error)
-      alert("Lỗi khi sinh nội dung.")
+      toast.success("Đã tạo nội dung thành công!")
+    } catch (error: any) {
+      console.error("Lỗi API Tạo bài:", error.message || error)
+      toast.error(error.message === "Failed to fetch" ? "Không thể kết nối tới máy chủ AI (Backend đang tắt)." : "Lỗi khi sinh nội dung.")
     } finally {
       setIsGenerating(false)
+    }
+  }
+
+  const handleRewrite = async () => {
+    if (!content) {
+      toast.error("Không có nội dung để viết lại!")
+      return
+    }
+    if (!selectedPage) {
+      toast.error("Vui lòng chọn trang Facebook!")
+      return
+    }
+
+    setIsRewriting(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error("Not logged in")
+
+      const res = await fetch(`${API_URL}/api/v1/posts/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          goal: `Vui lòng viết lại nội dung sau đây sao cho hấp dẫn, thu hút và mới lạ hơn nhưng vẫn giữ nguyên thông điệp chính: "${content}"`,
+          tone: tone,
+          page_id: selectedPage,
+          workspace_id: workspaceId,
+          target_audience: targetAudience,
+          keywords: keywords,
+          length: length
+        })
+      })
+
+      if (!res.ok) throw new Error("Failed to rewrite")
+      const data = await res.json()
+      setContent(data.data.content)
+      toast.success("Đã viết lại nội dung thành công!")
+    } catch (error: any) {
+      console.error("Lỗi API Viết lại:", error.message || error)
+      toast.error(error.message === "Failed to fetch" ? "Không thể kết nối tới máy chủ AI (Backend đang tắt)." : "Lỗi khi viết lại nội dung.")
+    } finally {
+      setIsRewriting(false)
     }
   }
 
   const handlePublish = async () => {
     if (!content || !selectedPage || !workspaceId) return
     setIsPublishing(true)
+    const toastId = toast.loading("Đang xử lý đăng bài...")
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error("Not logged in")
+
+      const urls = await uploadMediaFiles()
 
       const res = await fetch(`${API_URL}/api/v1/posts/publish`, {
         method: 'POST',
@@ -115,19 +211,21 @@ export default function CreatePost() {
           workspace_id: workspaceId,
           page_id: selectedPage,
           content: content,
+          media_urls: urls
         })
       })
 
       const data = await res.json()
       if (res.ok && data.status === "published") {
-        alert("Đăng bài thành công lên Facebook!")
+        toast.success("Đăng bài thành công lên Facebook!", { id: toastId })
         setContent("")
+        setMedia([])
       } else {
-        alert(`Lỗi: ${data.error || "Không thể đăng bài"}`)
+        toast.error(`Lỗi: ${data.error || "Không thể đăng bài"}`, { id: toastId })
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error)
-      alert("Lỗi kết nối khi đăng bài.")
+      toast.error(error.message === "Failed to fetch" ? "Không thể kết nối tới máy chủ API." : (error.message || "Lỗi kết nối khi đăng bài."), { id: toastId })
     } finally {
       setIsPublishing(false)
     }
@@ -135,23 +233,23 @@ export default function CreatePost() {
 
   const handleSchedule = async () => {
     if (!content || !selectedPage || !scheduledAt || !workspaceId) {
-      alert("Vui lòng chọn ngày giờ lên lịch!")
+      toast.error("Vui lòng chọn ngày giờ lên lịch!")
       return
     }
     
-    // Ensure scheduledAt is in the future
     const scheduledTime = new Date(scheduledAt).getTime()
     if (scheduledTime <= Date.now()) {
-      alert("Thời gian lên lịch phải ở tương lai!")
+      toast.error("Thời gian lên lịch phải ở tương lai!")
       return
     }
 
     setIsScheduling(true)
+    const toastId = toast.loading("Đang lên lịch bài viết...")
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error("Not logged in")
 
-      // Convert local datetime-local string to ISO format for backend
+      const urls = await uploadMediaFiles()
       const isoScheduledAt = new Date(scheduledAt).toISOString()
 
       const res = await fetch(`${API_URL}/api/v1/posts/schedule`, {
@@ -164,46 +262,95 @@ export default function CreatePost() {
           workspace_id: workspaceId,
           page_id: selectedPage,
           content: content,
-          scheduled_at: isoScheduledAt
+          scheduled_at: isoScheduledAt,
+          media_urls: urls
         })
       })
 
       const data = await res.json()
       if (res.ok && data.status === "scheduled") {
-        alert("Đã lưu bài viết vào lịch thành công!")
+        toast.success("Đã lưu bài viết vào lịch thành công!", { id: toastId })
         setContent("")
         setScheduledAt("")
+        setMedia([])
       } else {
-        alert(`Lỗi: ${data.error || "Không thể lên lịch"}`)
+        toast.error(`Lỗi: ${data.error || "Không thể lên lịch"}`, { id: toastId })
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error)
-      alert("Lỗi kết nối khi lên lịch bài.")
+      toast.error(error.message === "Failed to fetch" ? "Không thể kết nối tới máy chủ API." : (error.message || "Lỗi kết nối khi lên lịch bài."), { id: toastId })
     } finally {
       setIsScheduling(false)
     }
   }
 
+  const handleSaveDraft = async () => {
+    if (!content) {
+      toast.error("Vui lòng nhập nội dung trước khi lưu nháp.")
+      return
+    }
+    if (!selectedPage || !workspaceId) {
+      toast.error("Vui lòng chọn trang Facebook!")
+      return
+    }
+
+    setIsSavingDraft(true)
+    const toastId = toast.loading("Đang lưu nháp...")
+    try {
+      const urls = await uploadMediaFiles()
+
+      const { error } = await supabase.from('posts').insert({
+        workspace_id: workspaceId,
+        page_id: selectedPage,
+        content: content,
+        status: 'draft',
+        media_urls: urls
+      })
+
+      if (error) throw error
+
+      toast.success("Đã lưu nháp bài viết thành công!", { id: toastId })
+    } catch (error: any) {
+      console.error(error)
+      toast.error(error.message || "Lỗi khi lưu nháp.", { id: toastId })
+    } finally {
+      setIsSavingDraft(false)
+    }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const filesArray = Array.from(e.target.files)
+      setMedia(prev => [...prev, ...filesArray])
+    }
+  }
+  
+  const removeMedia = (index: number) => {
+    setMedia(prev => prev.filter((_, i) => i !== index))
+  }
+
   const getSelectedPageName = () => {
     const page = pages.find(p => p.id === selectedPage)
-    return page ? page.name : "Your Page"
+    return page ? page.name : (userName || "Người dùng Facebook")
   }
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/50 bg-clip-text text-transparent">
-          Tạo bài viết với AI
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Để Trợ lý AI sáng tạo nội dung hoàn hảo cho khách hàng của bạn.
-        </p>
+      <div className="glass-card p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-purple-500/10 via-transparent to-transparent">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            Tạo bài viết với AI
+          </h1>
+          <p className="text-muted-foreground mt-2 text-base">
+            Mô tả mục tiêu, chọn hình ảnh và để Trợ lý AI sáng tạo nội dung hoàn hảo cho khách hàng của bạn.
+          </p>
+        </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-5 flex-1">
+      <div className="grid gap-6 lg:grid-cols-5 flex-1 items-start">
         {/* Editor Column */}
         <div className="lg:col-span-3 space-y-6">
-          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="size-5 text-primary" />
@@ -211,9 +358,9 @@ export default function CreatePost() {
               </CardTitle>
               <CardDescription>Mô tả mục tiêu của bạn, AI sẽ lo phần còn lại.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="goal">Bạn muốn đạt được điều gì?</Label>
+            <CardContent className="space-y-4 p-6">
+              <div className="space-y-3 bg-white/5 dark:bg-black/10 p-5 rounded-2xl border border-white/10">
+                <Label htmlFor="goal" className="text-base font-semibold">Bạn muốn đạt được điều gì?</Label>
                 <div className="flex gap-2">
                   <Input 
                     id="goal" 
@@ -222,16 +369,30 @@ export default function CreatePost() {
                     value={goal}
                     onChange={(e) => setGoal(e.target.value)}
                   />
-                  <Button onClick={handleGenerate} disabled={isGenerating || pages.length === 0 || isWorkspaceLoading} className="gap-2">
+                  <Button onClick={handleGenerate} disabled={isGenerating || pages.length === 0 || isWorkspaceLoading} className="gap-2 shrink-0">
                     {isGenerating ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
                     Tạo bài
                   </Button>
                 </div>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1 mr-1"><Lightbulb className="size-3"/> Gợi ý:</span>
+                  {["Bài tương tác Minigame", "Thông báo Khuyến mãi 50%", "Chia sẻ kiến thức"].map(prompt => (
+                    <Button 
+                      key={prompt} 
+                      variant="secondary" 
+                      size="sm" 
+                      className="text-xs h-7 px-2"
+                      onClick={() => setGoal(prompt)}
+                    >
+                      {prompt}
+                    </Button>
+                  ))}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Giọng văn</Label>
+                <div className="space-y-2 bg-white/5 dark:bg-black/10 p-5 rounded-2xl border border-white/10">
+                  <Label className="font-semibold">Giọng văn</Label>
                   <Select value={tone} onValueChange={(val) => val && setTone(val)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn giọng văn" />
@@ -244,8 +405,8 @@ export default function CreatePost() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Trang Facebook</Label>
+                <div className="space-y-2 bg-white/5 dark:bg-black/10 p-5 rounded-2xl border border-white/10">
+                  <Label className="font-semibold">Trang Facebook</Label>
                   <Select value={selectedPage} onValueChange={(val) => val && setSelectedPage(val)} disabled={pages.length === 0 || isWorkspaceLoading}>
                     <SelectTrigger>
                       <SelectValue placeholder={isWorkspaceLoading ? "Đang tải..." : pages.length === 0 ? "Chưa có trang nào" : "Chọn trang"} />
@@ -259,14 +420,121 @@ export default function CreatePost() {
                 </div>
               </div>
 
-              <div className="space-y-2 pt-4 border-t border-border/50">
-                <Label>Nội dung bài viết</Label>
-                <Textarea 
-                  placeholder="Nội dung do AI tạo sẽ xuất hiện tại đây..." 
-                  className="min-h-[200px] resize-none"
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                />
+              <div className="space-y-3 bg-white/5 dark:bg-black/10 p-5 rounded-2xl border border-white/10">
+                <div 
+                  className="flex items-center justify-between cursor-pointer"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                >
+                  <Label className="text-base font-semibold cursor-pointer">Tùy chỉnh AI Nâng cao</Label>
+                  {showAdvanced ? <ChevronUp className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}
+                </div>
+                
+                {showAdvanced && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-white/5 mt-2 animate-in fade-in slide-in-from-top-2">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Khách hàng mục tiêu</Label>
+                      <Input 
+                        placeholder="VD: Học sinh, Mẹ bỉm sữa..." 
+                        value={targetAudience}
+                        onChange={(e) => setTargetAudience(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Từ khóa bắt buộc</Label>
+                      <Input 
+                        placeholder="VD: Khuyến mãi, Freeship..." 
+                        value={keywords}
+                        onChange={(e) => setKeywords(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label className="text-sm font-medium">Độ dài bài viết</Label>
+                      <Select value={length} onValueChange={(val) => setLength(val || "")}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Chọn độ dài" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="short">Ngắn (Dưới 100 từ)</SelectItem>
+                          <SelectItem value="medium">Trung bình (100 - 300 từ)</SelectItem>
+                          <SelectItem value="long">Dài (Trên 300 từ)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3 bg-white/5 dark:bg-black/10 p-5 rounded-2xl border border-white/10">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">Nội dung bài viết</Label>
+                  <div className="flex items-center gap-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleRewrite} 
+                      disabled={isRewriting || !content || isWorkspaceLoading}
+                      className="h-7 text-xs px-2.5 gap-1.5"
+                    >
+                      {isRewriting ? <Loader2 className="size-3 animate-spin" /> : <RefreshCcw className="size-3" />}
+                      Viết lại bằng AI
+                    </Button>
+                    <span className="text-xs text-muted-foreground">{content.length} ký tự</span>
+                  </div>
+                </div>
+                <div className="relative">
+                  <Textarea 
+                    placeholder="Nội dung do AI tạo sẽ xuất hiện tại đây..." 
+                    className="min-h-[200px] resize-none pb-12"
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                  />
+                  <div className="absolute bottom-3 left-3">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="size-8 rounded-full hover:bg-muted"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    >
+                      <SmilePlus className="size-4 text-muted-foreground" />
+                    </Button>
+                    {showEmojiPicker && (
+                      <div className="absolute bottom-12 left-0 z-50 shadow-2xl rounded-xl overflow-hidden border border-border">
+                        <EmojiPicker 
+                          onEmojiClick={(emojiData) => {
+                            setContent(prev => prev + emojiData.emoji)
+                            setShowEmojiPicker(false)
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 bg-white/5 dark:bg-black/10 p-5 rounded-2xl border border-white/10">
+                <Label className="text-base font-semibold">Đính kèm Hình ảnh / Video</Label>
+                <div className="border-2 border-dashed border-border/60 rounded-xl p-8 flex flex-col items-center justify-center bg-background/50 hover:bg-background/80 transition-colors cursor-pointer" onClick={() => document.getElementById('media-upload')?.click()}>
+                  <ImageIcon className="size-8 text-muted-foreground mb-2" />
+                  <p className="text-sm font-medium">Kéo thả hoặc click để chọn ảnh/video</p>
+                  <p className="text-xs text-muted-foreground mt-1">Hỗ trợ JPG, PNG, MP4 (Tối đa 10MB)</p>
+                  <input id="media-upload" type="file" multiple accept="image/*,video/*" className="hidden" onChange={handleFileChange} />
+                </div>
+                {media.length > 0 && (
+                  <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
+                    {media.map((file, i) => (
+                      <div key={i} className="relative size-20 shrink-0 rounded-md overflow-hidden group border border-border">
+                        {file.type.startsWith('image/') ? (
+                           <img src={URL.createObjectURL(file)} alt="" className="object-cover w-full h-full" />
+                        ) : (
+                           <div className="w-full h-full bg-slate-200 flex items-center justify-center text-xs">Video</div>
+                        )}
+                        <button onClick={(e) => { e.stopPropagation(); removeMedia(i) }} className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <X className="size-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -274,17 +542,21 @@ export default function CreatePost() {
 
         {/* Preview & Actions Column */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden sticky top-6">
-            <CardHeader className="bg-muted/20 border-b border-border/50 pb-4">
+          <Card className="overflow-hidden sticky top-6 flex flex-col h-fit">
+            <CardHeader className="bg-black/5 dark:bg-white/5 border-b border-white/10 pb-4">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Facebook className="size-4 text-blue-500" />
                 Xem trước trên Facebook
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <SocialPreview content={content} pageName={getSelectedPageName()} />
+              <SocialPreview 
+                content={content} 
+                pageName={getSelectedPageName()} 
+                mediaUrl={media.length > 0 ? URL.createObjectURL(media[0]) : undefined}
+              />
             </CardContent>
-            <CardFooter className="bg-muted/20 border-t border-border/50 flex-col gap-3 p-4">
+            <CardFooter className="bg-black/5 dark:bg-white/5 border-t border-white/10 flex-col gap-3 p-5">
               <div className="flex w-full items-center gap-2">
                 <Input 
                   type="datetime-local" 
@@ -302,7 +574,10 @@ export default function CreatePost() {
                 </Button>
               </div>
               <div className="flex w-full gap-2 mt-2">
-                <Button variant="outline" className="flex-1 text-xs px-2"><Save className="size-3 mr-1" /> Lưu nháp</Button>
+                <Button variant="outline" className="flex-1 text-xs px-2" onClick={handleSaveDraft} disabled={isSavingDraft || isWorkspaceLoading}>
+                  {isSavingDraft ? <Loader2 className="size-3 mr-1 animate-spin" /> : <Save className="size-3 mr-1" />} 
+                  Lưu nháp
+                </Button>
                 <Button 
                   onClick={handlePublish}
                   disabled={isPublishing || !content || !selectedPage || isWorkspaceLoading}

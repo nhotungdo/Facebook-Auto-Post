@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { useRouter, usePathname } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { AuthModal } from "@/components/auth/AuthModal";
+import { Toaster } from "@/components/ui/sonner";
 
 export default function DashboardLayout({
   children,
@@ -78,6 +79,7 @@ export default function DashboardLayout({
           </div>
         </main>
       </div>
+      <Toaster />
     </SidebarProvider>
   );
 }

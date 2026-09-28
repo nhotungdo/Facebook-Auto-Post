@@ -94,7 +94,7 @@ export default function ScheduleDocsPage() {
           
           <div className="text-[16px] leading-[28px] text-techdy-text-secondary space-y-8">
             <p className="text-[18px]">
-              Tính năng Lên lịch (Scheduling) giúp bạn thiết lập một "lịch phát sóng" hoàn hảo. Hệ thống worker chạy ngầm 24/7 của chúng tôi sẽ thay bạn ấn nút Đăng bài (Publish) một cách chính xác từng phút.
+              Tính năng Lên lịch (Scheduling) giúp bạn thiết lập một &quot;lịch phát sóng&quot; hoàn hảo. Hệ thống worker chạy ngầm 24/7 của chúng tôi sẽ thay bạn ấn nút Đăng bài (Publish) một cách chính xác từng phút.
             </p>
 
             <div className="space-y-6">
@@ -105,7 +105,7 @@ export default function ScheduleDocsPage() {
                   Cách chọn thời gian đăng bài
                 </h3>
                 <p className="mb-4">
-                  Trong màn hình soạn thảo bài viết, thay vì bấm <strong>"Đăng ngay"</strong>, bạn có thể chọn <strong>"Lên lịch" (Schedule)</strong>.
+                  Trong màn hình soạn thảo bài viết, thay vì bấm <strong>&quot;Đăng ngay&quot;</strong>, bạn có thể chọn <strong>&quot;Lên lịch&quot; (Schedule)</strong>.
                 </p>
                 <ul className="list-disc pl-6 space-y-2 mb-4">
                   <li><strong>Chọn ngày & giờ:</strong> Sử dụng công cụ lịch (Date picker) để thiết lập thời gian mong muốn. Hệ thống mặc định lấy múi giờ theo trình duyệt của bạn (VD: GMT+7 cho Việt Nam).</li>
@@ -153,7 +153,7 @@ export default function ScheduleDocsPage() {
                   <AlertCircle className="w-4 h-4 text-orange-500" />
                   <h4 className="font-semibold text-techdy-text-primary text-[14px]">Đổi ý muốn huỷ lịch?</h4>
                 </div>
-                <p className="text-[14px]">Miễn là bài viết chưa tới giờ đăng (Trạng thái vẫn là READY), bạn có thể ấn "Chỉnh sửa" và đổi trạng thái về DRAFT để huỷ lệnh đăng.</p>
+                <p className="text-[14px]">Miễn là bài viết chưa tới giờ đăng (Trạng thái vẫn là READY), bạn có thể ấn &quot;Chỉnh sửa&quot; và đổi trạng thái về DRAFT để huỷ lệnh đăng.</p>
               </div>
               <div className="p-4 border border-techdy-border-default rounded-xl">
                 <div className="flex items-center gap-2 mb-2">

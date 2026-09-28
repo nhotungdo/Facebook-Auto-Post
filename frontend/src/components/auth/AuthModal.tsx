@@ -27,6 +27,7 @@ export function AuthModal({ isOpen, onOpenChange, defaultView = "login", redirec
   const router = useRouter()
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setError(null)
     setSuccess(null)
   }, [view, isOpen])
@@ -85,7 +86,7 @@ export function AuthModal({ isOpen, onOpenChange, defaultView = "login", redirec
         provider: 'facebook',
         options: {
           redirectTo: `${window.location.origin}/dashboard`,
-          scopes: 'public_profile'
+          scopes: 'public_profile,email'
         }
       })
       if (error) throw new Error(error.message)

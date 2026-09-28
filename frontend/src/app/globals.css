@@ -86,7 +86,7 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 1rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -141,4 +141,164 @@
   html {
     @apply font-sans;
   }
+}
+
+@layer utilities {
+  .bg-aurora {
+    background-image: 
+      radial-gradient(circle at 15% 50%, rgba(120, 119, 198, 0.08), transparent 40%),
+      radial-gradient(circle at 85% 30%, rgba(94, 219, 237, 0.08), transparent 40%);
+    background-attachment: fixed;
+    background-color: var(--background);
+  }
+  .dark .bg-aurora {
+    background-image: 
+      radial-gradient(circle at 15% 50%, rgba(120, 119, 198, 0.15), transparent 40%),
+      radial-gradient(circle at 85% 30%, rgba(94, 219, 237, 0.15), transparent 40%);
+    background-attachment: fixed;
+  }
+
+  .glass-card {
+    @apply bg-card/60 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-sm transition-all duration-300 rounded-[1.5rem];
+  }
+  .glass-card:hover {
+    @apply bg-card/70 border-white/30 dark:border-white/15 shadow-md;
+  }
+}
+
+@keyframes blob {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+@keyframes orbit {
+  0% { transform: rotate(0deg) translateX(180px) rotate(0deg); }
+  100% { transform: rotate(360deg) translateX(180px) rotate(-360deg); }
+}
+
+@keyframes orbit-reverse {
+  0% { transform: rotate(0deg) translateX(240px) rotate(0deg); }
+  100% { transform: rotate(-360deg) translateX(240px) rotate(360deg); }
+}
+
+@keyframes orbit-small {
+  0% { transform: rotate(45deg) translateX(130px) rotate(-45deg); }
+  100% { transform: rotate(405deg) translateX(130px) rotate(-405deg); }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.15); opacity: 0.2; }
+  100% { transform: scale(1); opacity: 0.6; }
+}
+
+@keyframes float-up {
+  0% { transform: translateY(0px); opacity: 0.4; }
+  50% { transform: translateY(-20px); opacity: 0.8; }
+  100% { transform: translateY(0px); opacity: 0.4; }
+}
+
+@keyframes spin-slow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes spin-reverse {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-360deg); }
+}
+
+@keyframes ring-pulse {
+  0%   { transform: scale(1);    opacity: 0.6; }
+  50%  { transform: scale(1.2);  opacity: 0.1; }
+  100% { transform: scale(1);    opacity: 0.6; }
+}
+
+@keyframes aurora {
+  0%   { opacity: 0.4; transform: translateX(-60px) skewX(-5deg); }
+  50%  { opacity: 0.7; transform: translateX(60px) skewX(5deg); }
+  100% { opacity: 0.4; transform: translateX(-60px) skewX(-5deg); }
+}
+
+@keyframes conic-spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  25%  { transform: translate(-40px, -60px) scale(1.08); }
+  50%  { transform: translate(50px, -30px) scale(0.95); }
+  75%  { transform: translate(-20px, 40px) scale(1.05); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+.animate-aurora {
+  animation: aurora 8s ease-in-out infinite;
+}
+
+.animate-conic-spin {
+  animation: conic-spin 20s linear infinite;
+}
+
+.animate-drift {
+  animation: drift 12s ease-in-out infinite;
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animate-orbit {
+  animation: orbit 12s linear infinite;
+}
+
+.animate-orbit-reverse {
+  animation: orbit-reverse 18s linear infinite;
+}
+
+.animate-orbit-small {
+  animation: orbit-small 8s linear infinite;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 4s ease-in-out infinite;
+}
+
+.animate-float-up {
+  animation: float-up 6s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 30s linear infinite;
+}
+
+.animate-spin-reverse {
+  animation: spin-reverse 20s linear infinite;
+}
+
+.animate-ring-pulse {
+  animation: ring-pulse 3.5s ease-in-out infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-3000 {
+  animation-delay: 3s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+.animation-delay-5000 {
+  animation-delay: 5s;
+}
+
+.animation-delay-6000 {
+  animation-delay: 6s;
 }

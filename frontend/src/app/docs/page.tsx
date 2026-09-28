@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, BookOpen, Facebook, Sparkles, CalendarClock, LineChart, ChevronRight, FileText, Bot } from "lucide-react";
+import { ArrowLeft, BookOpen, Sparkles, CalendarClock, LineChart, ChevronRight, FileText, Bot } from "lucide-react";
 
 export default function DocsPage() {
   return (
@@ -26,7 +26,7 @@ export default function DocsPage() {
           
           <div className="flex items-center gap-4">
             <Link 
-              href="/login" 
+              href="/dashboard" 
               className="text-[14px] leading-[20px] text-techdy-text-secondary hover:text-techdy-text-primary transition-[color] duration-[150ms] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-techdy-text-primary rounded-[4px]"
             >
               Đi đến Dashboard

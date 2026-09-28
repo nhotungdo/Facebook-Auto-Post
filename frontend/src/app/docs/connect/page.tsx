@@ -103,7 +103,7 @@ export default function ConnectDocsPage() {
                 <div>
                   <h4 className="text-orange-400 font-bold text-[14px] mb-1">Yêu cầu bắt buộc</h4>
                   <p className="text-orange-400/80 text-[14px] leading-relaxed">
-                    Bạn phải là <strong>Quản trị viên (Admin)</strong> hoặc <strong>Biên tập viên (Editor)</strong> của Fanpage mới có thể cấp quyền đăng bài. Quyền "Người kiểm duyệt" hoặc "Nhà phân tích" sẽ không thể xuất bản nội dung.
+                    Bạn phải là <strong>Quản trị viên (Admin)</strong> hoặc <strong>Biên tập viên (Editor)</strong> của Fanpage mới có thể cấp quyền đăng bài. Quyền &quot;Người kiểm duyệt&quot; hoặc &quot;Nhà phân tích&quot; sẽ không thể xuất bản nội dung.
                   </p>
                 </div>
               </div>
@@ -117,7 +117,7 @@ export default function ConnectDocsPage() {
                   Truy cập trang Quản lý tích hợp
                 </h3>
                 <p className="mb-4 pl-10">
-                  Tại Dashboard của ứng dụng, hãy nhấp vào menu <strong>"Tích hợp" (Integrations)</strong> ở thanh điều hướng bên trái. Sau đó bấm vào nút <strong className="text-blue-500 bg-blue-500/10 px-2 py-1 rounded">Kết nối Facebook</strong>.
+                  Tại Dashboard của ứng dụng, hãy nhấp vào menu <strong>&quot;Tích hợp&quot; (Integrations)</strong> ở thanh điều hướng bên trái. Sau đó bấm vào nút <strong className="text-blue-500 bg-blue-500/10 px-2 py-1 rounded">Kết nối Facebook</strong>.
                 </p>
               </div>
 
@@ -149,7 +149,7 @@ export default function ConnectDocsPage() {
                 </p>
                 <ul className="list-disc pl-16 space-y-2 mb-4">
                   <li>Nên chọn <strong>Tất cả các trang</strong> để sau này nếu bạn tạo Fanpage mới, bạn không cần phải xác thực lại.</li>
-                  <li>Đảm bảo các quyền như <em>"Tạo và quản lý nội dung trên trang của bạn"</em> đều được gạt sang <strong>Có (Yes)</strong>.</li>
+                  <li>Đảm bảo các quyền như <em>&quot;Tạo và quản lý nội dung trên trang của bạn&quot;</em> đều được gạt sang <strong>Có (Yes)</strong>.</li>
                 </ul>
               </div>
             </div>

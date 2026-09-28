@@ -109,7 +109,7 @@ export default function AiContentDocsPage() {
                 </p>
                 <div className="bg-techdy-surface-muted border border-techdy-border-default rounded-lg p-5">
                   <p className="text-[14px] font-mono text-techdy-text-primary">
-                    <span className="text-techdy-text-secondary">Ví dụ nhập:</span> "Giới thiệu sản phẩm cà phê Cold Brew mới ra mắt, nhấn mạnh vào hương vị trái cây tự nhiên và ưu đãi mua 1 tặng 1."
+                    <span className="text-techdy-text-secondary">Ví dụ nhập:</span> &quot;Giới thiệu sản phẩm cà phê Cold Brew mới ra mắt, nhấn mạnh vào hương vị trái cây tự nhiên và ưu đãi mua 1 tặng 1.&quot;
                   </p>
                 </div>
               </div>
@@ -163,7 +163,7 @@ export default function AiContentDocsPage() {
             </p>
             <ul className="list-disc pl-6 space-y-2 mb-8">
               <li>Bạn có thể đọc lại toàn bộ bài viết, thêm hashtag, hoặc điều chỉnh câu chữ trực tiếp trên trình soạn thảo.</li>
-              <li>Nếu không ưng ý, bạn có thể bấm <strong>"Viết lại (Regenerate)"</strong> để AI cung cấp một phiên bản khác.</li>
+              <li>Nếu không ưng ý, bạn có thể bấm <strong>&quot;Viết lại (Regenerate)&quot;</strong> để AI cung cấp một phiên bản khác.</li>
               <li>Sau khi hoàn thiện, bạn mới thực hiện đưa vào danh sách chờ xuất bản (Ready) hoặc Đăng ngay (Publish Now).</li>
             </ul>
 

@@ -70,133 +70,148 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-6 auto-rows-min animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Welcome Block */}
+      <div className="col-span-1 md:col-span-4 lg:col-span-6 glass-card p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-blue-500/10 via-transparent to-transparent">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/50 bg-clip-text text-transparent">
-            Chào mừng trở lại, {email || "bạn"} 👋
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            Chào mừng trở lại, {email ? email.split('@')[0] : "bạn"} 👋
           </h1>
-          <p className="text-muted-foreground mt-1 text-lg">
-            Hôm nay bạn muốn AI giúp gì cho Fanpage của mình?
+          <p className="text-muted-foreground mt-2 text-base max-w-xl">
+            Hôm nay bạn muốn AI giúp gì cho Fanpage của mình? Hãy để trợ lý AI tạo ra những nội dung thu hút nhất.
           </p>
         </div>
         <Link href="/create">
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2 shadow-lg shadow-blue-500/20">
-            <Sparkles className="size-4" />
+          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 shadow-lg shadow-primary/20 rounded-full px-6 py-6 text-base group transition-all">
+            <Sparkles className="size-5 group-hover:rotate-12 transition-transform" />
             Tạo bài viết mới
           </Button>
         </Link>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="bg-card/40 backdrop-blur-sm border-border/50 hover:border-primary/50 transition-colors">
-          <CardHeader className="pb-2">
-            <CardDescription>Trang Facebook</CardDescription>
-            {countsError ? (
-              <CardContent className="p-0">
-                <ErrorState
-                  title="Không tải được số trang"
-                  message={countsError}
-                  onRetry={handleRetryCounts}
-                />
-              </CardContent>
-            ) : (
-              <CardTitle className="text-4xl">
-                {pagesCount === null ? <Loader2 className="size-6 animate-spin text-muted-foreground" /> : pagesCount}
-              </CardTitle>
-            )}
-          </CardHeader>
-          {!countsError && (
-            <CardContent>
-              <p className="text-sm text-muted-foreground flex items-center gap-1">
-                <CheckCircle2 className="size-3 text-emerald-500" />
-                Đã kết nối
-              </p>
+      {/* Stats Cards */}
+      <Card className="col-span-1 md:col-span-2 lg:col-span-2 hover:border-primary/50 transition-colors flex flex-col justify-between">
+        <CardHeader className="pb-2">
+          <CardDescription>Trang Facebook</CardDescription>
+          {countsError ? (
+            <CardContent className="p-0">
+              <ErrorState
+                title="Không tải được số trang"
+                message={countsError}
+                onRetry={handleRetryCounts}
+              />
             </CardContent>
+          ) : (
+            <CardTitle className="text-5xl font-light">
+              {pagesCount === null ? <Loader2 className="size-6 animate-spin text-muted-foreground" /> : pagesCount}
+            </CardTitle>
           )}
-        </Card>
-        
-        <Card className="bg-card/40 backdrop-blur-sm border-border/50 hover:border-primary/50 transition-colors">
-          <CardHeader className="pb-2">
-            <CardDescription>Bài viết AI (Tháng này)</CardDescription>
-            {countsError ? (
-              <CardContent className="p-0">
-                <ErrorState
-                  title="Không tải được số bài viết"
-                  message={countsError}
-                  onRetry={handleRetryCounts}
-                />
-              </CardContent>
-            ) : (
-              <CardTitle className="text-4xl">
-                {postsCount === null ? <Loader2 className="size-6 animate-spin text-muted-foreground" /> : postsCount}
-              </CardTitle>
-            )}
-          </CardHeader>
-          {!countsError && (
-            <CardContent>
-              <p className="text-sm text-muted-foreground flex items-center gap-1">
-                <Sparkles className="size-3 text-blue-500" />
-                Đã tạo tự động
-              </p>
-            </CardContent>
-          )}
-        </Card>
-
-        <Card className="bg-card/40 backdrop-blur-sm border-border/50 hover:border-primary/50 transition-colors">
-          <CardHeader className="pb-2">
-            <CardDescription>Trạng thái hệ thống</CardDescription>
-            <CardTitle className="text-4xl text-emerald-500">Active</CardTitle>
-          </CardHeader>
+        </CardHeader>
+        {!countsError && (
           <CardContent>
-            <p className="text-sm text-muted-foreground flex items-center gap-1">
-              <ListFilter className="size-3 text-muted-foreground" />
-              Hoạt động bình thường
-            </p>
+            <div className="inline-flex items-center gap-1.5 text-sm bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-full">
+              <CheckCircle2 className="size-3.5" />
+              <span>Đã kết nối</span>
+            </div>
           </CardContent>
-        </Card>
-      </div>
+        )}
+      </Card>
       
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Quick Actions / Getting Started */}
-        <Card className="bg-gradient-to-br from-card to-card/50 border-border/50">
-          <CardHeader>
-            <CardTitle>Bắt đầu nhanh</CardTitle>
-            <CardDescription>Các bước để tối ưu hóa trang của bạn</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50">
-              <div className="flex items-center gap-3">
-                <div className="bg-blue-500/10 p-2 rounded-md">
-                  <Users className="size-4 text-blue-500" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Kết nối Fanpage</p>
-                  <p className="text-xs text-muted-foreground">Thêm trang bạn muốn quản lý</p>
-                </div>
-              </div>
-              <Link href="/pages">
-                <Button variant="ghost" size="sm"><ArrowRight className="size-4" /></Button>
-              </Link>
-            </div>
-            
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50">
-              <div className="flex items-center gap-3">
-                <div className="bg-purple-500/10 p-2 rounded-md">
-                  <Sparkles className="size-4 text-purple-500" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Thử nghiệm AI</p>
-                  <p className="text-xs text-muted-foreground">Tạo bài viết đầu tiên của bạn</p>
-                </div>
-              </div>
-              <Link href="/create">
-                <Button variant="ghost" size="sm"><ArrowRight className="size-4" /></Button>
-              </Link>
+      <Card className="col-span-1 md:col-span-2 lg:col-span-2 hover:border-primary/50 transition-colors flex flex-col justify-between">
+        <CardHeader className="pb-2">
+          <CardDescription>Bài viết AI (Tháng này)</CardDescription>
+          {countsError ? (
+            <CardContent className="p-0">
+              <ErrorState
+                title="Không tải được số bài viết"
+                message={countsError}
+                onRetry={handleRetryCounts}
+              />
+            </CardContent>
+          ) : (
+            <CardTitle className="text-5xl font-light">
+              {postsCount === null ? <Loader2 className="size-6 animate-spin text-muted-foreground" /> : postsCount}
+            </CardTitle>
+          )}
+        </CardHeader>
+        {!countsError && (
+          <CardContent>
+            <div className="inline-flex items-center gap-1.5 text-sm bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2.5 py-1 rounded-full">
+              <Sparkles className="size-3.5" />
+              <span>Đã tạo tự động</span>
             </div>
           </CardContent>
-        </Card>
-      </div>
+        )}
+      </Card>
+
+      <Card className="col-span-1 md:col-span-2 lg:col-span-2 hover:border-primary/50 transition-colors flex flex-col justify-between">
+        <CardHeader className="pb-2">
+          <CardDescription>Trạng thái hệ thống</CardDescription>
+          <CardTitle className="text-5xl font-light text-emerald-500">Active</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="inline-flex items-center gap-1.5 text-sm bg-muted/50 text-muted-foreground px-2.5 py-1 rounded-full">
+            <ListFilter className="size-3.5" />
+            <span>Hoạt động bình thường</span>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Quick Actions / Getting Started */}
+      <Card className="col-span-1 md:col-span-2 lg:col-span-3 row-span-2 border-border/50">
+        <CardHeader>
+          <CardTitle>Bắt đầu nhanh</CardTitle>
+          <CardDescription>Các bước để tối ưu hóa trang của bạn</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group cursor-pointer">
+            <div className="flex items-center gap-4">
+              <div className="bg-blue-500/20 p-3 rounded-xl group-hover:scale-110 transition-transform">
+                <Users className="size-5 text-blue-500" />
+              </div>
+              <div>
+                <p className="font-medium text-sm">Kết nối Fanpage</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Thêm trang bạn muốn quản lý</p>
+              </div>
+            </div>
+            <Link href="/pages">
+              <Button variant="ghost" size="icon" className="rounded-full"><ArrowRight className="size-4" /></Button>
+            </Link>
+          </div>
+          
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group cursor-pointer">
+            <div className="flex items-center gap-4">
+              <div className="bg-purple-500/20 p-3 rounded-xl group-hover:scale-110 transition-transform">
+                <Sparkles className="size-5 text-purple-500" />
+              </div>
+              <div>
+                <p className="font-medium text-sm">Thử nghiệm AI</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Tạo bài viết đầu tiên của bạn</p>
+              </div>
+            </div>
+            <Link href="/create">
+              <Button variant="ghost" size="icon" className="rounded-full"><ArrowRight className="size-4" /></Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Upcoming Schedule */}
+      <Card className="col-span-1 md:col-span-2 lg:col-span-3 row-span-2 flex flex-col">
+        <CardHeader>
+          <CardTitle>Lịch trình sắp tới</CardTitle>
+          <CardDescription>Các bài viết sẽ được tự động đăng</CardDescription>
+        </CardHeader>
+        <CardContent className="flex-1 flex flex-col items-center justify-center text-muted-foreground border-t border-white/5 bg-black/5 dark:bg-white/5 m-6 mt-0 rounded-2xl p-8 min-h-[200px]">
+          <div className="size-12 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+            <ListFilter className="size-6 opacity-50" />
+          </div>
+          <p className="text-sm">Chưa có bài viết nào được lên lịch</p>
+          <Link href="/create">
+            <Button variant="link" className="text-primary mt-2">Lên lịch ngay</Button>
+          </Link>
+        </CardContent>
+      </Card>
     </div>
   )
 }

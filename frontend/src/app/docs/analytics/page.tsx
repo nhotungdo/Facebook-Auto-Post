@@ -146,7 +146,7 @@ export default function AnalyticsDocsPage() {
                   Tối ưu hoá AI bằng Lịch sử hiệu suất
                 </h3>
                 <p className="mb-4">
-                  Dữ liệu Analytics không chỉ để hiển thị biểu đồ đẹp mắt! Khi bạn yêu cầu tạo nội dung (Content Strategy), hệ thống AI Strategist của chúng tôi có khả năng đọc lại <strong>"Lịch sử hiệu suất"</strong> các bài đăng trước đây.
+                  Dữ liệu Analytics không chỉ để hiển thị biểu đồ đẹp mắt! Khi bạn yêu cầu tạo nội dung (Content Strategy), hệ thống AI Strategist của chúng tôi có khả năng đọc lại <strong>&quot;Lịch sử hiệu suất&quot;</strong> các bài đăng trước đây.
                 </p>
                 <ul className="list-disc pl-6 space-y-2 mb-4">
                   <li>AI sẽ tự động nhận diện xem bài đăng với giọng văn nào (Hài hước hay Chuyên nghiệp) mang lại nhiều <em>Tương tác</em> hơn.</li>
@@ -159,7 +159,7 @@ export default function AnalyticsDocsPage() {
             <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/20 mt-8">
               <p className="text-purple-400 text-[14px] flex gap-3">
                 <span className="font-bold shrink-0">🚀 KẾT LUẬN:</span>
-                Vòng lặp: "Lên ý tưởng → Đăng bài → Phân tích hiệu suất → AI Học hỏi" giúp Fanpage của bạn không ngừng cải thiện mỗi ngày.
+                Vòng lặp: &quot;Lên ý tưởng → Đăng bài → Phân tích hiệu suất → AI Học hỏi&quot; giúp Fanpage của bạn không ngừng cải thiện mỗi ngày.
               </p>
             </div>
           </div>
