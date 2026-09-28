@@ -1,16 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import RedirectResponse
 from typing import List
-import httpx
-import json
 
-from app.api.deps import get_current_user_token
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import RedirectResponse
+
+from app.api.deps import get_current_user_id, get_current_user_token
 from app.schemas.page import ConnectPageRequest, ConnectPageOAuthRequest, PageResponse, AvailablePageInfo
 from app.services.supabase_client import get_supabase_client
 from app.core.security import encrypt_token
 from app.core.config import settings
 
 router = APIRouter(prefix="/facebook", tags=["facebook"])
+
 
 @router.get("/login")
 async def facebook_login(workspace_id: str = Query(...)):
@@ -20,10 +21,10 @@ async def facebook_login(workspace_id: str = Query(...)):
     """
     if not settings.FB_APP_ID:
         raise HTTPException(status_code=500, detail="FB_APP_ID is not configured")
-        
-    redirect_uri = "http://localhost:8000/api/v1/facebook/callback"
+
+    redirect_uri = f"{settings.BACKEND_URL}/api/v1/facebook/callback"
     scopes = "pages_show_list,pages_read_engagement,pages_manage_posts"
-    
+
     url = (
         f"https://www.facebook.com/v20.0/dialog/oauth?"
         f"client_id={settings.FB_APP_ID}&"
@@ -41,10 +42,10 @@ async def facebook_callback(code: str = Query(...), state: str = Query(...)):
     """
     if not settings.FB_APP_ID or not settings.FB_APP_SECRET:
         raise HTTPException(status_code=500, detail="Facebook App credentials not configured")
-        
-    redirect_uri = "http://localhost:8000/api/v1/facebook/callback"
+
+    redirect_uri = f"{settings.BACKEND_URL}/api/v1/facebook/callback"
     workspace_id = state
-    
+
     # Đổi code lấy user access token
     token_url = "https://graph.facebook.com/v20.0/oauth/access_token"
     async with httpx.AsyncClient() as client:
@@ -54,18 +55,18 @@ async def facebook_callback(code: str = Query(...), state: str = Query(...)):
             "client_secret": settings.FB_APP_SECRET,
             "code": code
         })
-        
+
         if resp.status_code != 200:
             raise HTTPException(status_code=400, detail=f"Failed to get access token: {resp.text}")
-            
+
         data = resp.json()
         user_access_token = data.get("access_token")
-        
+
         if not user_access_token:
             raise HTTPException(status_code=400, detail="No access token in response")
-            
+
     # Redirect về frontend trang /pages/select, truyền token qua hash
-    frontend_redirect_url = f"http://localhost:3000/pages/select?workspace_id={workspace_id}#token={user_access_token}"
+    frontend_redirect_url = f"{settings.FRONTEND_URL}/pages/select?workspace_id={workspace_id}#token={user_access_token}"
     return RedirectResponse(frontend_redirect_url)
 
 @router.get("/available-pages", response_model=List[AvailablePageInfo])
@@ -82,13 +83,13 @@ async def get_available_pages(
             "access_token": token,
             "fields": "id,name,access_token,followers_count,picture"
         })
-        
+
         if resp.status_code != 200:
             raise HTTPException(status_code=400, detail=f"Failed to fetch pages from Graph API: {resp.text}")
-            
+
         data = resp.json()
         pages = data.get("data", [])
-        
+
         result = []
         for p in pages:
             pic_url = p.get("picture", {}).get("data", {}).get("url")
@@ -104,7 +105,8 @@ async def get_available_pages(
 @router.post("/connect-oauth", response_model=PageResponse)
 async def connect_facebook_page_oauth(
     request: ConnectPageOAuthRequest,
-    user_token: str = Depends(get_current_user_token)
+    user_token: str = Depends(get_current_user_token),
+    user_id: str = Depends(get_current_user_id)
 ):
     """
     Kết nối Facebook Page sau khi user chọn từ danh sách.
@@ -117,41 +119,48 @@ async def connect_facebook_page_oauth(
             "access_token": request.user_access_token,
             "fields": "id,name,access_token"
         })
-        
+
         if resp.status_code != 200:
             raise HTTPException(status_code=400, detail="Failed to validate token")
-            
+
         data = resp.json()
         pages = data.get("data", [])
-        
+
         selected_page = next((p for p in pages if p["id"] == request.page_id), None)
         if not selected_page:
             raise HTTPException(status_code=404, detail="Page not found in user accounts")
-            
-        # Mã hóa Page Access Token
-        encrypted_token = encrypt_token(selected_page["access_token"])
-        
-        supabase = get_supabase_client(user_token)
-        try:
-            response = supabase.table("pages").upsert({
-                "id": selected_page["id"],
-                "name": selected_page["name"],
-                "access_token": encrypted_token,
-                "workspace_id": request.workspace_id
-            }).execute()
-            
-            if not response.data:
-                raise HTTPException(status_code=400, detail="Failed to connect page in DB")
-                
-            page_data = response.data[0]
-            return PageResponse(id=page_data["id"], name=page_data["name"], connected=True)
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+
+    # Mã hóa Page Access Token
+    encrypted_token = encrypt_token(selected_page["access_token"])
+
+    supabase = get_supabase_client(user_token)
+    try:
+        response = supabase.table("facebook_pages").upsert({
+            "page_id": selected_page["id"],       # Facebook string ID
+            "page_name": selected_page["name"],
+            "access_token": encrypted_token,
+            "user_id": user_id,                    # NOT NULL, dùng cho RLS
+            "workspace_id": request.workspace_id,  # Trang thuộc workspace nào
+        }, on_conflict="user_id,page_id").execute()
+
+        page_data_list = response.data
+        if not page_data_list:
+            raise HTTPException(status_code=400, detail="Failed to connect page in DB")
+
+        page_data = page_data_list[0]
+        if not isinstance(page_data, dict):
+            raise HTTPException(status_code=400, detail="Invalid data format")
+        return PageResponse(id=str(page_data.get("id", "")), name=str(page_data.get("page_name", "")), connected=True)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/connect", response_model=PageResponse)
 async def connect_facebook_page(
     request: ConnectPageRequest,
-    user_token: str = Depends(get_current_user_token)
+    user_token: str = Depends(get_current_user_token),
+    user_id: str = Depends(get_current_user_id)
 ):
     """
     Kết nối thủ công (giữ lại để backwards compatibility)
@@ -159,33 +168,50 @@ async def connect_facebook_page(
     supabase = get_supabase_client(user_token)
     encrypted_token = encrypt_token(request.access_token)
     try:
-        response = supabase.table("pages").upsert({
-            "id": request.page_id,
-            "name": request.name,
+        response = supabase.table("facebook_pages").upsert({
+            "page_id": request.page_id,           # Facebook string ID
+            "page_name": request.name,
             "access_token": encrypted_token,
-            "workspace_id": request.workspace_id
-        }).execute()
-        
-        if not response.data:
+            "user_id": user_id,                    # NOT NULL, dùng cho RLS
+            "workspace_id": request.workspace_id,  # Trang thuộc workspace nào
+        }, on_conflict="user_id,page_id").execute()
+
+        page_data_list = response.data
+        if not page_data_list:
             raise HTTPException(status_code=400, detail="Failed to connect page")
-            
-        page_data = response.data[0]
-        return PageResponse(id=page_data["id"], name=page_data["name"], connected=True)
+
+        page_data = page_data_list[0]
+        if not isinstance(page_data, dict):
+            raise HTTPException(status_code=400, detail="Invalid data format")
+        return PageResponse(id=str(page_data.get("id", "")), name=str(page_data.get("page_name", "")), connected=True)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/pages", response_model=List[PageResponse])
 async def get_facebook_pages(
     workspace_id: str = Query(..., description="ID của workspace"),
-    user_token: str = Depends(get_current_user_token)
+    user_token: str = Depends(get_current_user_token),
+    user_id: str = Depends(get_current_user_id)
 ):
     """
-    Lấy danh sách Facebook Pages đã kết nối với hệ thống cho một workspace cụ thể.
+    Lấy danh sách Facebook Pages đã kết nối của user trong một workspace.
     """
     supabase = get_supabase_client(user_token)
     try:
-        response = supabase.table("pages").select("id, name").eq("workspace_id", workspace_id).execute()
-        return [PageResponse(id=p["id"], name=p["name"], connected=True) for p in response.data]
+        response = (
+            supabase.table("facebook_pages")
+            .select("id, page_name")
+            .eq("user_id", user_id)
+            .eq("workspace_id", workspace_id)
+            .execute()
+        )
+        data = response.data
+        if not data:
+            return []
+        return [PageResponse(id=str(p.get("id", "")), name=str(p.get("page_name", "")), connected=True) for p in data if isinstance(p, dict)]
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-

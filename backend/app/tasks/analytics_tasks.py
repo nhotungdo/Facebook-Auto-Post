@@ -1,6 +1,5 @@
 from celery import shared_task
 import logging
-from typing import Any
 from app.services.supabase_client import get_supabase_client
 from app.services.publishers.facebook import FacebookPublisher
 from app.core.security import decrypt_token
@@ -26,11 +25,17 @@ def sync_post_analytics() -> str:
             
         posts = response.data or []
         for post in posts:
+            if not isinstance(post, dict):
+                continue
+                
             page_info = post.get("facebook_pages")
+            if not isinstance(page_info, dict):
+                page_info = {}
+                
             encrypted_token = page_info.get("access_token") if page_info else None
-            access_token = decrypt_token(encrypted_token) if encrypted_token else None
-            fb_post_id = post.get("facebook_post_id")
-            post_id = post.get("id")
+            access_token = decrypt_token(str(encrypted_token)) if encrypted_token else None
+            fb_post_id = str(post.get("facebook_post_id")) if post.get("facebook_post_id") else None
+            post_id = str(post.get("id")) if post.get("id") else None
             
             if not access_token or not fb_post_id:
                 continue

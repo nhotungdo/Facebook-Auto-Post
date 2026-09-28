@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 from pydantic import BaseModel
 
 
@@ -8,6 +8,7 @@ class PostRequest(BaseModel):
     goal: str
     tone: str
     page_id: str
+    workspace_id: Optional[str] = None
 
 
 class PostResponse(BaseModel):
@@ -24,6 +25,7 @@ class SchedulePostRequest(BaseModel):
     content: str
     media_url: Any = None
     scheduled_at: str
+    workspace_id: Optional[str] = None
 
 
 class SchedulePostResponse(BaseModel):
@@ -38,6 +40,7 @@ class PublishNowRequest(BaseModel):
     page_id: str
     content: str
     media_url: Any = None
+    workspace_id: Optional[str] = None
 
 class PublishNowResponse(BaseModel):
     """Schema cho response sau khi publish bài viết."""

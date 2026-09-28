@@ -2,7 +2,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Calendar, Settings, PenTool, LayoutDashboard, History, Sparkles, LogOut } from "lucide-react"
+import { Calendar, Settings, PenTool, LayoutDashboard, Sparkles, LogOut } from "lucide-react"
 import { Facebook } from "@/components/icons"
 import {
   Sidebar,

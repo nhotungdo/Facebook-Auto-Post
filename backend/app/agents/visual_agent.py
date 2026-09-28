@@ -33,7 +33,9 @@ class AIVisualAgent:
                 n=1,
                 size="1024x1024"
             )
-            return response.data[0].url
+            if response.data and len(response.data) > 0:
+                return response.data[0].url
+            return None
         except Exception as e:
             logger.error(f"Error generating image: {e}")
             return None

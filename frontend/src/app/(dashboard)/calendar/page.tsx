@@ -1,17 +1,27 @@
 "use client"
 
 import * as React from "react"
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckCircle2, Clock, AlertCircle, Loader2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, CheckCircle2, Clock, AlertCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase"
 import { useWorkspace } from "@/hooks/useWorkspace"
 
+// Bài đăng hiển thị trên lịch
+interface CalendarPost {
+  id: string
+  status: string
+  scheduled_at: string | null
+  created_at: string
+  title?: string
+  goal?: string
+}
+
 export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = React.useState(new Date())
   const { workspaceId, isLoading: isWorkspaceLoading } = useWorkspace()
-  const [posts, setPosts] = React.useState<any[]>([])
+  const [posts, setPosts] = React.useState<CalendarPost[]>([])
   const [isLoading, setIsLoading] = React.useState(false)
 
   // Navigate months

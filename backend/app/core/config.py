@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     # Redis/Celery
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # URLs
+    BACKEND_URL: str = "http://localhost:8000"
+    FRONTEND_URL: str = "http://localhost:3000"
+
     class Config:
         env_file = ".env"
 

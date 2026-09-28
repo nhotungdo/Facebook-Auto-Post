@@ -3,6 +3,7 @@
 import { Sparkles, ArrowRight, CheckCircle2, ListFilter, Users, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ErrorState } from "@/components/ErrorState"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
@@ -13,6 +14,8 @@ export default function Dashboard() {
   const { workspaceId, isLoading: isWorkspaceLoading } = useWorkspace()
   const [pagesCount, setPagesCount] = useState<number | null>(null)
   const [postsCount, setPostsCount] = useState<number | null>(null)
+  const [countsError, setCountsError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -26,33 +29,45 @@ export default function Dashboard() {
     async function fetchCounts() {
       if (!workspaceId) return
 
+      setCountsError(null)
       try {
         // Fetch Pages Count
-        const { count: pCount } = await supabase
-          .from("pages")
+        const pagesResult = await supabase
+          .from("facebook_pages")
           .select("*", { count: 'exact', head: true })
           .eq("workspace_id", workspaceId)
+        if (pagesResult.error) throw pagesResult.error
 
+        const pCount = pagesResult.count
         setPagesCount(pCount || 0)
 
         // Fetch Posts Count this month
         const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
-        const { count: ptCount } = await supabase
+        const postsResult = await supabase
           .from("posts")
           .select("*", { count: 'exact', head: true })
           .eq("workspace_id", workspaceId)
           .gte("created_at", startOfMonth)
+        if (postsResult.error) throw postsResult.error
 
+        const ptCount = postsResult.count
         setPostsCount(ptCount || 0)
       } catch (err) {
         console.error("Error fetching dashboard counts:", err)
+        setCountsError(err instanceof Error ? err.message : "Lỗi không xác định")
       }
     }
 
-    if (!isWorkspaceLoading) {
+    if (!isWorkspaceLoading && workspaceId) {
       fetchCounts()
     }
-  }, [workspaceId, isWorkspaceLoading])
+  }, [workspaceId, isWorkspaceLoading, reloadKey])
+
+  const handleRetryCounts = () => {
+    setPagesCount(null)
+    setPostsCount(null)
+    setReloadKey(k => k + 1)
+  }
 
   return (
     <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -77,31 +92,55 @@ export default function Dashboard() {
         <Card className="bg-card/40 backdrop-blur-sm border-border/50 hover:border-primary/50 transition-colors">
           <CardHeader className="pb-2">
             <CardDescription>Trang Facebook</CardDescription>
-            <CardTitle className="text-4xl">
-              {pagesCount === null ? <Loader2 className="size-6 animate-spin text-muted-foreground" /> : pagesCount}
-            </CardTitle>
+            {countsError ? (
+              <CardContent className="p-0">
+                <ErrorState
+                  title="Không tải được số trang"
+                  message={countsError}
+                  onRetry={handleRetryCounts}
+                />
+              </CardContent>
+            ) : (
+              <CardTitle className="text-4xl">
+                {pagesCount === null ? <Loader2 className="size-6 animate-spin text-muted-foreground" /> : pagesCount}
+              </CardTitle>
+            )}
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground flex items-center gap-1">
-              <CheckCircle2 className="size-3 text-emerald-500" />
-              Đã kết nối
-            </p>
-          </CardContent>
+          {!countsError && (
+            <CardContent>
+              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                <CheckCircle2 className="size-3 text-emerald-500" />
+                Đã kết nối
+              </p>
+            </CardContent>
+          )}
         </Card>
         
         <Card className="bg-card/40 backdrop-blur-sm border-border/50 hover:border-primary/50 transition-colors">
           <CardHeader className="pb-2">
             <CardDescription>Bài viết AI (Tháng này)</CardDescription>
-            <CardTitle className="text-4xl">
-              {postsCount === null ? <Loader2 className="size-6 animate-spin text-muted-foreground" /> : postsCount}
-            </CardTitle>
+            {countsError ? (
+              <CardContent className="p-0">
+                <ErrorState
+                  title="Không tải được số bài viết"
+                  message={countsError}
+                  onRetry={handleRetryCounts}
+                />
+              </CardContent>
+            ) : (
+              <CardTitle className="text-4xl">
+                {postsCount === null ? <Loader2 className="size-6 animate-spin text-muted-foreground" /> : postsCount}
+              </CardTitle>
+            )}
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground flex items-center gap-1">
-              <Sparkles className="size-3 text-blue-500" />
-              Đã tạo tự động
-            </p>
-          </CardContent>
+          {!countsError && (
+            <CardContent>
+              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                <Sparkles className="size-3 text-blue-500" />
+                Đã tạo tự động
+              </p>
+            </CardContent>
+          )}
         </Card>
 
         <Card className="bg-card/40 backdrop-blur-sm border-border/50 hover:border-primary/50 transition-colors">

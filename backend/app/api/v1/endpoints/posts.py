@@ -1,3 +1,6 @@
+from typing import Any, Optional
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException
 from app.schemas.post import (
     PostRequest,
@@ -7,7 +10,7 @@ from app.schemas.post import (
     PublishNowRequest,
     PublishNowResponse,
 )
-from app.api.deps import get_current_user_token, get_current_user
+from app.api.deps import get_current_user_id, get_current_user_token
 from app.services.supabase_client import get_supabase_client
 from app.agents.content_creator import CopywriterAgent
 from app.services.publishers.facebook import FacebookPublisher
@@ -15,11 +18,12 @@ from app.core.security import decrypt_token
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
+
 @router.post("/generate", response_model=PostResponse)
-async def generate_post(
+def generate_post(
     request: PostRequest,
     user_token: str = Depends(get_current_user_token),
-    user: dict = Depends(get_current_user)
+    user_id: str = Depends(get_current_user_id),
 ):
     """
     Tạo nội dung bài đăng Facebook bằng AI dựa trên mục tiêu và giọng văn.
@@ -34,9 +38,8 @@ async def generate_post(
 
     # Save token tracking
     supabase = get_supabase_client(user_token)
-    user_id = user.id if hasattr(user, 'id') else user.get('id') if isinstance(user, dict) else user.user.id if hasattr(user, 'user') else None
-    
-    if usage and user_id:
+
+    if usage:
         try:
             supabase.table("ai_generations").insert({
                 "user_id": user_id,
@@ -44,8 +47,8 @@ async def generate_post(
                 "completion_tokens": usage.get("completion_tokens", 0),
                 "total_tokens": usage.get("total_tokens", 0)
             }).execute()
-        except Exception as e:
-            # We can log this but don't fail the request if logging fails
+        except Exception:
+            # Logging token usage must not fail the request
             pass
 
     return PostResponse(
@@ -61,7 +64,8 @@ async def generate_post(
 @router.post("/publish", response_model=PublishNowResponse)
 async def publish_post_now(
     request: PublishNowRequest,
-    user_token: str = Depends(get_current_user_token)
+    user_token: str = Depends(get_current_user_token),
+    user_id: str = Depends(get_current_user_id),
 ):
     """
     Publish bài viết ngay lập tức lên Facebook Page.
@@ -70,88 +74,138 @@ async def publish_post_now(
     3. Lưu lại bản ghi post vào DB với status = published.
     """
     supabase = get_supabase_client(user_token)
-    
+
     try:
-        # 1. Fetch Page token
-        page_resp = supabase.table("pages").select("access_token").eq("id", request.page_id).execute()
-        if not page_resp.data:
+        # 1. Fetch page info (DB row id + Facebook page id + encrypted token)
+        #    Lọc thêm theo workspace (nếu có) để tránh cross-workspace leak
+        page_query = (
+            supabase.table("facebook_pages")
+            .select("id, page_id, access_token")
+            .eq("id", request.page_id)
+        )
+        if request.workspace_id:
+            page_query = page_query.eq("workspace_id", request.workspace_id)
+        page_resp = page_query.execute()
+        page_data_list = page_resp.data
+        if not page_data_list:
             raise HTTPException(status_code=404, detail="Page not found or not connected")
-            
-        encrypted_token = page_resp.data[0]["access_token"]
-        decrypted_token = decrypt_token(encrypted_token)
-        
+
+        page_row = page_data_list[0]
+        if not isinstance(page_row, dict):
+            raise HTTPException(status_code=404, detail="Invalid page data format")
+        fb_page_id: str = str(page_row.get("page_id", ""))
+        decrypted_token = decrypt_token(str(page_row.get("access_token", "")))
+
         # 2. Publish to FB
         publisher = FacebookPublisher()
         fb_result = await publisher.post_to_page(
-            page_id=request.page_id,
+            page_id=fb_page_id,
             access_token=decrypted_token,
             message=request.content,
             media_url=request.media_url if isinstance(request.media_url, str) else None
         )
-        
+
         # 3. Save post to DB
         status = "published" if fb_result.get("success") else "failed"
-        fb_post_id = None
+        fb_post_id: Optional[str] = None
         if status == "published" and "data" in fb_result and "id" in fb_result["data"]:
             fb_post_id = fb_result["data"]["id"]
-            
-        db_post = supabase.table("posts").insert({
-            "page_id": request.page_id,
+
+        insert_data: dict[str, Any] = {
+            "user_id": user_id,
+            "page_id": str(page_row.get("id", "")),  # FK -> facebook_pages.id (UUID)
             "content": request.content,
-            "media_url": request.media_url if isinstance(request.media_url, str) else None,
+            "media_urls": [request.media_url] if isinstance(request.media_url, str) else [],
             "status": status,
-        }).execute()
-        
-        db_post_id = db_post.data[0]["id"] if db_post.data else None
-        
+        }
+        if request.workspace_id:
+            insert_data["workspace_id"] = request.workspace_id
+        if fb_post_id:
+            insert_data["facebook_post_id"] = fb_post_id
+        if status == "published":
+            insert_data["published_at"] = datetime.now(timezone.utc).isoformat()
+        if status == "failed":
+            insert_data["error_message"] = str(fb_result.get("error"))
+
+        db_post = supabase.table("posts").insert(insert_data).execute()
+        db_post_data = db_post.data
+        db_post_id = None
+        if db_post_data and isinstance(db_post_data[0], dict):
+            db_post_id = str(db_post_data[0].get("id")) if db_post_data[0].get("id") else None
+
         if not fb_result.get("success"):
             return PublishNowResponse(
                 status="failed",
                 post_id=db_post_id,
                 error=str(fb_result.get("error"))
             )
-            
+
         return PublishNowResponse(
             status="published",
             post_id=db_post_id,
             fb_post_id=fb_post_id
         )
-        
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/schedule", response_model=SchedulePostResponse)
 async def schedule_post(
     request: SchedulePostRequest,
-    user_token: str = Depends(get_current_user_token)
+    user_token: str = Depends(get_current_user_token),
+    user_id: str = Depends(get_current_user_id),
 ):
     """
     Lưu bài viết vào DB với trạng thái 'ready' và giờ đăng 'scheduled_at'.
     Celery worker sẽ tự động quét và đẩy lên Facebook khi tới giờ.
     """
     supabase = get_supabase_client(user_token)
-    
+
     try:
-        # Verify page exists
-        page_resp = supabase.table("pages").select("id").eq("id", request.page_id).execute()
-        if not page_resp.data:
+        # Verify page exists (page_id sent by frontend is the facebook_pages DB UUID)
+        # Lọc thêm theo workspace (nếu có) để tránh cross-workspace leak
+        page_query = (
+            supabase.table("facebook_pages")
+            .select("id")
+            .eq("id", request.page_id)
+        )
+        if request.workspace_id:
+            page_query = page_query.eq("workspace_id", request.workspace_id)
+        page_resp = page_query.execute()
+        page_data_list = page_resp.data
+        if not page_data_list:
             raise HTTPException(status_code=404, detail="Page not found")
 
+        page_row = page_data_list[0]
+        if not isinstance(page_row, dict):
+            raise HTTPException(status_code=404, detail="Invalid page data format")
+
         # Save post to DB
-        db_post = supabase.table("posts").insert({
-            "page_id": request.page_id,
+        insert_data: dict[str, Any] = {
+            "user_id": user_id,
+            "page_id": str(page_row.get("id", "")),  # FK -> facebook_pages.id (UUID)
             "content": request.content,
-            "media_url": request.media_url if isinstance(request.media_url, str) else None,
+            "media_urls": [request.media_url] if isinstance(request.media_url, str) else [],
             "status": "ready",
-            "scheduled_at": request.scheduled_at
-        }).execute()
-        
-        db_post_id = db_post.data[0]["id"] if db_post.data else "unknown"
-        
+            "scheduled_at": request.scheduled_at,
+        }
+        if request.workspace_id:
+            insert_data["workspace_id"] = request.workspace_id
+
+        db_post = supabase.table("posts").insert(insert_data).execute()
+
+        db_post_data = db_post.data
+        db_post_id = "unknown"
+        if db_post_data and isinstance(db_post_data[0], dict):
+            db_post_id = str(db_post_data[0].get("id", "unknown"))
+
         return SchedulePostResponse(
             status="scheduled",
             post_id=db_post_id,
             scheduled_at=request.scheduled_at,
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

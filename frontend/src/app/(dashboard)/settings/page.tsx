@@ -13,10 +13,16 @@ import { supabase } from "@/lib/supabase"
 import { useWorkspace } from "@/hooks/useWorkspace"
 import Link from "next/link"
 
+// Fanpage đã kết nối hiển thị trong tab Facebook
+interface ConnectedPage {
+  id: string
+  name: string
+}
+
 export default function SettingsPage() {
   const { workspaceId, isLoading: isWorkspaceLoading } = useWorkspace()
   
-  const [pages, setPages] = React.useState<any[]>([])
+  const [pages, setPages] = React.useState<ConnectedPage[]>([])
   const [isPagesLoading, setIsPagesLoading] = React.useState(false)
   
   const [groqKey, setGroqKey] = React.useState("")
@@ -30,11 +36,11 @@ export default function SettingsPage() {
       setIsPagesLoading(true)
       try {
         const { data, error } = await supabase
-          .from("pages")
-          .select("*")
+          .from("facebook_pages")
+          .select("id, page_name")
           .eq("workspace_id", workspaceId)
         if (error) throw error
-        setPages(data || [])
+        setPages((data || []).map(p => ({ id: p.id, name: p.page_name })))
       } catch (err) {
         console.error("Error fetching pages:", err)
       } finally {
@@ -48,7 +54,7 @@ export default function SettingsPage() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from("ai_settings")
           .select("*")
           .eq("user_id", user.id)
@@ -58,9 +64,10 @@ export default function SettingsPage() {
           if (data.groq_api_key) setGroqKey(data.groq_api_key)
           if (data.default_model) setModel(data.default_model)
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         // PG 0 rows error is fine if no settings saved yet
-        if (err.code !== 'PGRST116') {
+        const code = (err as { code?: string } | null)?.code
+        if (code !== 'PGRST116') {
           console.error("Error fetching AI settings:", err)
         }
       } finally {
@@ -103,7 +110,7 @@ export default function SettingsPage() {
     if (!confirm("Bạn có chắc chắn muốn ngắt kết nối trang này?")) return
     try {
       const { error } = await supabase
-        .from("pages")
+        .from("facebook_pages")
         .delete()
         .eq("id", pageId)
       

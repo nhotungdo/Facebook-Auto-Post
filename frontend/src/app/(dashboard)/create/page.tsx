@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Sparkles, CalendarIcon, Image as ImageIcon, Save, Loader2, Send } from "lucide-react"
+import { Sparkles, CalendarIcon, Save, Loader2, Send } from "lucide-react"
 import { Facebook } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SocialPreview } from "@/components/SocialPreview"
 import { supabase } from "@/lib/supabase"
 import { useWorkspace } from "@/hooks/useWorkspace"
+import { API_URL } from "@/lib/api"
 
 interface Page {
   id: string
@@ -40,7 +41,7 @@ export default function CreatePost() {
       if (!session) return
 
       try {
-        const res = await fetch(`http://localhost:8000/api/v1/facebook/pages?workspace_id=${workspaceId}`, {
+        const res = await fetch(`${API_URL}/api/v1/facebook/pages?workspace_id=${workspaceId}`, {
           headers: {
             'Authorization': `Bearer ${session.access_token}`
           }
@@ -73,7 +74,7 @@ export default function CreatePost() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error("Not logged in")
 
-      const res = await fetch('http://localhost:8000/api/v1/posts/generate', {
+      const res = await fetch(`${API_URL}/api/v1/posts/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -105,7 +106,7 @@ export default function CreatePost() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error("Not logged in")
 
-      const res = await fetch('http://localhost:8000/api/v1/posts/publish', {
+      const res = await fetch(`${API_URL}/api/v1/posts/publish`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -154,7 +155,7 @@ export default function CreatePost() {
       // Convert local datetime-local string to ISO format for backend
       const isoScheduledAt = new Date(scheduledAt).toISOString()
 
-      const res = await fetch('http://localhost:8000/api/v1/posts/schedule', {
+      const res = await fetch(`${API_URL}/api/v1/posts/schedule`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,13 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Plus, Loader2, CheckCircle2 } from "lucide-react"
 import { Facebook } from "@/components/icons"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { supabase } from "@/lib/supabase"
 import { useWorkspace } from "@/hooks/useWorkspace"
+import { API_URL } from "@/lib/api"
 
 interface Page {
   id: string
@@ -28,7 +29,7 @@ export default function PagesManagement() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
 
-      const res = await fetch(`http://localhost:8000/api/v1/facebook/pages?workspace_id=${workspaceId}`, {
+      const res = await fetch(`${API_URL}/api/v1/facebook/pages?workspace_id=${workspaceId}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
         }
@@ -44,9 +45,12 @@ export default function PagesManagement() {
     }
   }, [workspaceId])
 
-  useEffect(() => {
+  // Fetch khi workspace sẵn sàng; gọi trong callback để tránh cascading render
+  const fetchPagesRef = React.useRef(fetchPages)
+  React.useEffect(() => {
+    fetchPagesRef.current = fetchPages
     if (!isWorkspaceLoading) {
-      fetchPages()
+      void fetchPagesRef.current()
     }
   }, [fetchPages, isWorkspaceLoading])
 
@@ -55,7 +59,10 @@ export default function PagesManagement() {
       alert("Không tìm thấy Workspace, vui lòng thử lại sau.")
       return
     }
-    window.location.href = `http://localhost:8000/api/v1/facebook/login?workspace_id=${workspaceId}`
+    // Đúng chủ đích: rời app sang backend FastAPI để bắt đầu OAuth flow với Meta,
+    // nên cần full page load (router.push sẽ sai vì đây không phải route của Next).
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.href = `${API_URL}/api/v1/facebook/login?workspace_id=${workspaceId}`
   }
 
   return (

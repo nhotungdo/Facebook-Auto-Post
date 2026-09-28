@@ -29,6 +29,6 @@ def decrypt_token(encrypted_token: str) -> str:
     try:
         decrypted = cipher_suite.decrypt(encrypted_token.encode())
         return decrypted.decode()
-    except Exception as e:
+    except Exception:
         # For backward compatibility with unencrypted tokens during migration
         return encrypted_token

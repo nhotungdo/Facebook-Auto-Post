@@ -1,8 +1,6 @@
 # pyrefly: ignore [missing-import]
 from celery import shared_task
 import logging
-# pyrefly: ignore [missing-import]
-import httpx
 from datetime import datetime, timezone
 from typing import Any, Optional, cast
 from typing import TypedDict

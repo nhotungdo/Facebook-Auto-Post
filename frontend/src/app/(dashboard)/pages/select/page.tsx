@@ -1,14 +1,16 @@
 "use client"
 
 import * as React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import Image from "next/image"
 import { Loader2, ArrowLeft, Check } from "lucide-react"
 import { Facebook } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { supabase } from "@/lib/supabase"
 import { useWorkspace } from "@/hooks/useWorkspace"
+import { API_URL } from "@/lib/api"
 
 interface AvailablePage {
   id: string
@@ -18,14 +20,27 @@ interface AvailablePage {
   picture_url?: string
 }
 
-export default function SelectFacebookPage() {
+// Đọc token từ URL hash một lần khi mount (state khởi tạo, không cần effect)
+function readTokenFromHash(): string {
+  if (typeof window === "undefined") return ""
+  const hash = window.location.hash
+  if (hash && hash.startsWith('#token=')) {
+    const token = hash.substring(7)
+    // Remove hash from URL for security
+    window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    return token
+  }
+  return ""
+}
+
+function SelectFacebookPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const urlWorkspaceId = searchParams.get('workspace_id')
   
   const [pages, setPages] = useState<AvailablePage[]>([])
   const [loading, setLoading] = useState(true)
-  const [userToken, setUserToken] = useState<string>("")
+  const [userToken] = useState<string>(readTokenFromHash)
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
   
@@ -33,17 +48,8 @@ export default function SelectFacebookPage() {
   const workspaceId = urlWorkspaceId || hookWorkspaceId
 
   useEffect(() => {
-    // Extract token from hash: #token=...
-    const hash = window.location.hash
-    let token = ""
-    if (hash && hash.startsWith('#token=')) {
-      token = hash.substring(7)
-      setUserToken(token)
-      // Remove hash from URL for security
-      window.history.replaceState(null, '', window.location.pathname + window.location.search)
-    }
-
-    if (!token) {
+    // Token đã được đọc từ hash lúc khởi tạo state (readTokenFromHash)
+    if (!userToken) {
       alert("Không tìm thấy Access Token từ Meta. Vui lòng thử lại.")
       router.push('/pages')
       return
@@ -55,7 +61,7 @@ export default function SelectFacebookPage() {
         const { data: { session } } = await supabase.auth.getSession()
         if (!session) throw new Error("Not logged in")
 
-        const res = await fetch(`http://localhost:8000/api/v1/facebook/available-pages?token=${token}`, {
+        const res = await fetch(`${API_URL}/api/v1/facebook/available-pages?token=${userToken}`, {
           headers: {
             'Authorization': `Bearer ${session.access_token}`
           }
@@ -75,7 +81,7 @@ export default function SelectFacebookPage() {
     }
 
     fetchPages()
-  }, [router])
+  }, [router, userToken])
 
   const handleConnect = async () => {
     if (!selectedPageId || !workspaceId || !userToken) return
@@ -85,7 +91,7 @@ export default function SelectFacebookPage() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error("Not logged in")
 
-      const res = await fetch('http://localhost:8000/api/v1/facebook/connect-oauth', {
+      const res = await fetch(`${API_URL}/api/v1/facebook/connect-oauth`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -156,9 +162,9 @@ export default function SelectFacebookPage() {
                 onClick={() => setSelectedPageId(page.id)}
               >
                 <CardHeader className="flex flex-row items-start gap-4 pb-2">
-                  <div className="w-12 h-12 rounded-full overflow-hidden bg-muted flex-shrink-0">
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-muted flex-shrink-0 relative">
                     {page.picture_url ? (
-                      <img src={page.picture_url} alt={page.name} className="w-full h-full object-cover" />
+                      <Image src={page.picture_url} alt={page.name} fill className="object-cover" unoptimized />
                     ) : (
                       <Facebook className="w-full h-full p-2 text-muted-foreground opacity-50" />
                     )}
@@ -194,5 +200,17 @@ export default function SelectFacebookPage() {
         </>
       )}
     </div>
+  )
+}
+
+export default function SelectFacebookPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center min-h-screen">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <SelectFacebookPageContent />
+    </Suspense>
   )
 }
