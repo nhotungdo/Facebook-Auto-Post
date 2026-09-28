@@ -36,21 +36,22 @@ export default function CreatePost() {
 
   React.useEffect(() => {
     const fetchPages = async () => {
-      if (!workspaceId) return
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
       try {
-        const res = await fetch(`${API_URL}/api/v1/facebook/pages?workspace_id=${workspaceId}`, {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`
-          }
-        })
-        if (res.ok) {
-          const data = await res.json()
-          setPages(data)
-          if (data.length > 0) {
-            setSelectedPage(data[0].id)
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const { data, error } = await supabase
+          .from('facebook_pages')
+          .select('id, page_id, page_name')
+          .eq('user_id', user.id)
+        
+        if (error) throw error
+
+        if (data) {
+          const formattedPages = data.map(p => ({ id: p.id, name: p.page_name, page_id: p.page_id }))
+          setPages(formattedPages)
+          if (formattedPages.length > 0) {
+            setSelectedPage(formattedPages[0].id)
           }
         }
       } catch (err) {
@@ -58,10 +59,8 @@ export default function CreatePost() {
       }
     }
     
-    if (!isWorkspaceLoading) {
-      fetchPages()
-    }
-  }, [workspaceId, isWorkspaceLoading])
+    fetchPages()
+  }, [])
 
   const handleGenerate = async () => {
     if (!goal || !selectedPage) {

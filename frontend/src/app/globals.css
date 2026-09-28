@@ -46,6 +46,20 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* TECHDYBEAR Brand Tokens */
+  --font-inter: "Inter", sans-serif;
+  --color-techdy-text-primary: oklch(0.95 0.006 320);
+  --color-techdy-text-secondary: oklch(0.745 0.018 320);
+  --color-techdy-text-tertiary: #ffffff;
+  --color-techdy-text-inverse: oklab(0.95 0.00459627 -0.00385672 / 0.85);
+  --color-techdy-surface-base: #000000;
+  --color-techdy-surface-muted: oklch(0.15 0.013 318);
+  --color-techdy-surface-raised: oklab(0.999994 0.0000455678 0.0000200868 / 0.04);
+  --color-techdy-border-default: oklch(0.275 0.022 320);
+  --color-techdy-border-muted: oklab(0.999994 0.0000455678 0.0000200868 / 0.1);
+  --radius-techdy-xs: 9999px;
+  --shadow-techdy-1: oklab(0.5 0.0891996 -0.16776 / 0.36) 0px 18px 44px 0px;
 }
 
 :root {

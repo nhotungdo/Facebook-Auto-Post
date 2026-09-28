@@ -22,7 +22,7 @@ import { supabase } from "@/lib/supabase"
 const items = [
   {
     title: "Tổng quan",
-    url: "/",
+    url: "/dashboard",
     icon: LayoutDashboard,
   },
   {

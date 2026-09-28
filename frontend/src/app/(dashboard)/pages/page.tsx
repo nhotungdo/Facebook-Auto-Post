@@ -1,68 +1,108 @@
 "use client"
 
 import * as React from "react"
-import { useState } from "react"
-import { Plus, Loader2, CheckCircle2 } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Plus, Loader2, CheckCircle2, RefreshCw, AlertCircle } from "lucide-react"
 import { Facebook } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { supabase } from "@/lib/supabase"
-import { useWorkspace } from "@/hooks/useWorkspace"
-import { API_URL } from "@/lib/api"
+
 
 interface Page {
   id: string
-  name: string
-  connected: boolean
+  page_id: string
+  page_name: string
+  picture_url: string
 }
 
 export default function PagesManagement() {
   const [pages, setPages] = useState<Page[]>([])
   const [loading, setLoading] = useState(true)
-  
-  const { workspaceId, isLoading: isWorkspaceLoading } = useWorkspace()
+  const [syncing, setSyncing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const fetchPages = React.useCallback(async () => {
-    if (!workspaceId) return
+  const fetchPages = async () => {
     setLoading(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
 
-      const res = await fetch(`${API_URL}/api/v1/facebook/pages?workspace_id=${workspaceId}`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setPages(data)
-      }
-    } catch (error) {
-      console.error("Failed to fetch pages", error)
+      const { data, error } = await supabase
+        .from('facebook_pages')
+        .select('*')
+        .eq('user_id', user.id)
+        
+      if (error) throw error
+      setPages(data || [])
+    } catch (err: any) {
+      console.error("Lỗi khi tải danh sách trang:", err)
+      setError("Không thể tải danh sách trang từ Database.")
     } finally {
       setLoading(false)
     }
-  }, [workspaceId])
+  }
 
-  // Fetch khi workspace sẵn sàng; gọi trong callback để tránh cascading render
-  const fetchPagesRef = React.useRef(fetchPages)
-  React.useEffect(() => {
-    fetchPagesRef.current = fetchPages
-    if (!isWorkspaceLoading) {
-      void fetchPagesRef.current()
-    }
-  }, [fetchPages, isWorkspaceLoading])
+  useEffect(() => {
+    fetchPages()
+  }, [])
 
-  const handleConnectOAuth = () => {
-    if (!workspaceId) {
-      alert("Không tìm thấy Workspace, vui lòng thử lại sau.")
-      return
+  const handleSyncFacebook = async () => {
+    setSyncing(true)
+    setError(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session || !session.provider_token) {
+        setError("Không tìm thấy Access Token của Facebook. Vui lòng đăng xuất và đăng nhập lại bằng Facebook để cấp quyền.")
+        setSyncing(false)
+        return
+      }
+
+      // Gọi Graph API để lấy danh sách Page
+      const res = await fetch(`https://graph.facebook.com/v20.0/me/accounts?access_token=${session.provider_token}&fields=id,name,picture`)
+      const data = await res.json()
+
+      if (data.error) {
+        throw new Error(data.error.message || "Lỗi từ Facebook API")
+      }
+
+      const fbPages = data.data || []
+      
+      if (fbPages.length === 0) {
+        setError("Không tìm thấy Fanpage nào do bạn làm Quản trị viên.")
+        setSyncing(false)
+        return
+      }
+
+      // Lưu vào Database
+      const { data: userData } = await supabase.auth.getUser()
+      const userId = userData.user?.id
+
+      if (!userId) throw new Error("Vui lòng đăng nhập lại.")
+
+      const upsertData = fbPages.map((p: any) => ({
+        user_id: userId,
+        page_id: p.id,
+        page_name: p.name,
+        access_token: p.access_token,
+        picture_url: p.picture?.data?.url || null
+      }))
+
+      const { error: dbError } = await supabase
+        .from('facebook_pages')
+        .upsert(upsertData, { onConflict: 'user_id,page_id' })
+
+      if (dbError) throw dbError
+
+      await fetchPages()
+      
+    } catch (err: any) {
+      console.error("Lỗi đồng bộ:", err)
+      setError(err.message || "Đã xảy ra lỗi khi đồng bộ với Facebook.")
+    } finally {
+      setSyncing(false)
     }
-    // Đúng chủ đích: rời app sang backend FastAPI để bắt đầu OAuth flow với Meta,
-    // nên cần full page load (router.push sẽ sai vì đây không phải route của Next).
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-    window.location.href = `${API_URL}/api/v1/facebook/login?workspace_id=${workspaceId}`
   }
 
   return (
@@ -71,22 +111,32 @@ export default function PagesManagement() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Facebook Pages</h1>
           <p className="text-muted-foreground mt-1">
-            Quản lý các trang Facebook đã kết nối với Workspace của bạn.
+            Quản lý các Fanpage đã kết nối để tự động đăng bài.
           </p>
         </div>
 
         <Button 
-          onClick={handleConnectOAuth} 
-          disabled={isWorkspaceLoading || !workspaceId}
+          onClick={handleSyncFacebook} 
+          disabled={syncing}
           className="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
         >
-          <Plus className="size-4" />
-          Kết nối Facebook
+          {syncing ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+          Đồng bộ từ Facebook
         </Button>
       </div>
 
+      {error && (
+        <div className="bg-destructive/15 text-destructive border border-destructive/20 p-4 rounded-md flex items-start gap-3">
+          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+          <div className="text-sm">
+            <h4 className="font-semibold mb-1">Lỗi</h4>
+            <p>{error}</p>
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {loading || isWorkspaceLoading ? (
+        {loading ? (
           <div className="col-span-full flex justify-center p-12">
             <Loader2 className="size-8 animate-spin text-muted-foreground" />
           </div>
@@ -97,9 +147,11 @@ export default function PagesManagement() {
                 <Facebook className="size-12 text-muted-foreground mb-4 opacity-50" />
                 <h3 className="font-semibold text-lg">Chưa có trang nào được kết nối</h3>
                 <p className="text-muted-foreground mb-6 max-w-sm">
-                  Kết nối với Meta OAuth để hệ thống tự động tải danh sách Fanpage của bạn. An toàn và nhanh chóng.
+                  Hãy đồng bộ để hệ thống tự động tải danh sách Fanpage bạn đang quản lý.
                 </p>
-                <Button onClick={handleConnectOAuth} disabled={!workspaceId} className="bg-blue-600 hover:bg-blue-700 text-white">Kết nối ngay</Button>
+                <Button onClick={handleSyncFacebook} disabled={syncing} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  Đồng bộ ngay
+                </Button>
               </CardContent>
             </Card>
           </div>
@@ -107,14 +159,21 @@ export default function PagesManagement() {
           pages.map(page => (
             <Card key={page.id} className="overflow-hidden bg-card/60 backdrop-blur-sm border-border/50 hover:border-primary/50 transition-colors">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg font-semibold">{page.name}</CardTitle>
+                <div className="flex items-center gap-3">
+                  {page.picture_url ? (
+                    <img src={page.picture_url} alt={page.page_name} className="size-10 rounded-full object-cover border" />
+                  ) : (
+                    <div className="size-10 rounded-full bg-muted flex items-center justify-center"><Facebook className="size-5" /></div>
+                  )}
+                  <CardTitle className="text-lg font-semibold">{page.page_name}</CardTitle>
+                </div>
                 <Facebook className="size-5 text-blue-500" />
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground break-all">ID: {page.id}</p>
+                <p className="text-xs text-muted-foreground mt-2 truncate">ID: {page.page_id}</p>
                 <div className="flex items-center gap-2 mt-4 text-sm font-medium text-emerald-500 bg-emerald-500/10 w-fit px-2 py-1 rounded-md">
                   <CheckCircle2 className="size-4" />
-                  Đã kết nối
+                  Sẵn sàng tự động đăng
                 </div>
               </CardContent>
             </Card>

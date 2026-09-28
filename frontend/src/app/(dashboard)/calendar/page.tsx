@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase"
-import { useWorkspace } from "@/hooks/useWorkspace"
 
 // Bài đăng hiển thị trên lịch
 interface CalendarPost {
@@ -14,13 +13,11 @@ interface CalendarPost {
   status: string
   scheduled_at: string | null
   created_at: string
-  title?: string
-  goal?: string
+  content?: string
 }
 
 export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = React.useState(new Date())
-  const { workspaceId, isLoading: isWorkspaceLoading } = useWorkspace()
   const [posts, setPosts] = React.useState<CalendarPost[]>([])
   const [isLoading, setIsLoading] = React.useState(false)
 
@@ -31,7 +28,6 @@ export default function CalendarPage() {
   // Fetch posts for the current month
   React.useEffect(() => {
     async function fetchPosts() {
-      if (!workspaceId) return
       setIsLoading(true)
 
       const year = currentMonth.getFullYear()
@@ -40,10 +36,13 @@ export default function CalendarPage() {
       const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString()
 
       try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
         const { data, error } = await supabase
-          .from("posts")
+          .from("facebook_posts")
           .select("*")
-          .eq("workspace_id", workspaceId)
+          .eq("user_id", user.id)
           .gte("created_at", startDate)
           .lte("created_at", endDate)
 
@@ -56,10 +55,8 @@ export default function CalendarPage() {
       }
     }
 
-    if (!isWorkspaceLoading) {
-      fetchPosts()
-    }
-  }, [workspaceId, isWorkspaceLoading, currentMonth])
+    fetchPosts()
+  }, [currentMonth])
 
   // Get the number of days in the month
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate()
@@ -154,7 +151,7 @@ export default function CalendarPage() {
                         {getStatusBadge(post.status)}
                       </div>
                       <p className="text-xs font-medium line-clamp-2 leading-tight">
-                        {post.title || post.goal || 'Bài viết chưa có tiêu đề'}
+                        {post.content || 'Bài viết chưa có nội dung'}
                       </p>
                     </div>
                   ))}
