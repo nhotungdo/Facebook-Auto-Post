@@ -44,7 +44,8 @@ def generate_ai_content_task(
     logger.info(f"Generating content for post {post_id} with goal {goal}")
     try:
         orchestrator = MultiAgentOrchestrator()
-        content, media_url, status_msg = orchestrator.generate_and_review_post(goal=goal, tone=tone)
+        content, media_url, status_msg = orchestrator.generate_and_review_post(
+            goal=goal, tone=tone)
 
         supabase = get_supabase_client()
         if content:
@@ -56,9 +57,13 @@ def generate_ai_content_task(
             }
             if media_url:
                 update_data["media_urls"] = [media_url]
-                
-            supabase.table("posts").update(update_data).eq("id", post_id).execute()
-            return {"status": status, "post_id": post_id, "message": status_msg}
+
+            supabase.table("posts").update(
+                update_data).eq("id", post_id).execute()
+            return {
+                "status": status,
+                "post_id": post_id,
+                "message": status_msg}
         else:
             supabase.table("posts").update(
                 {"status": "failed", "error_message": status_msg}
@@ -121,7 +126,8 @@ def _publish_post_sync(post: PostRecord, supabase: Any) -> None:
         page_info: PageInfo = raw_page_info
         page_id: str = page_info.get("page_id") or ""
         encrypted_token = page_info.get("access_token")
-        access_token: str = decrypt_token(encrypted_token) if encrypted_token else ""
+        access_token: str = decrypt_token(
+            encrypted_token) if encrypted_token else ""
 
         raw_media_urls: Optional[list[str]] = post.get("media_urls")
         media_url: Optional[str] = (

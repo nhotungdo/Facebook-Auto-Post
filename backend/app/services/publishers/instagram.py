@@ -1,9 +1,10 @@
-import httpx
+
 import logging
 from typing import Any, Optional
 from app.services.publishers.base import BasePublisher
 
 logger = logging.getLogger(__name__)
+
 
 class InstagramPublisher(BasePublisher):
     """
@@ -41,4 +42,8 @@ class InstagramPublisher(BasePublisher):
     async def get_page_info(
         self, page_id: str, access_token: str
     ) -> dict[str, Any]:
-        return {"success": True, "data": {"id": page_id, "name": "Instagram Account"}}
+        return {
+            "success": True,
+            "data": {
+                "id": page_id,
+                "name": "Instagram Account"}}

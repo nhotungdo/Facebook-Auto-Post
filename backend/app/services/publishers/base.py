@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
+
 class BasePublisher(ABC):
     """
     Abstract Base Class cho các mạng xã hội.

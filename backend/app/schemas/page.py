@@ -1,5 +1,6 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional
+
 
 class ConnectPageRequest(BaseModel):
     page_id: str
@@ -7,10 +8,12 @@ class ConnectPageRequest(BaseModel):
     access_token: str
     workspace_id: str
 
+
 class ConnectPageOAuthRequest(BaseModel):
     page_id: str
     workspace_id: str
     user_access_token: str
+
 
 class AvailablePageInfo(BaseModel):
     id: str
@@ -18,6 +21,7 @@ class AvailablePageInfo(BaseModel):
     access_token: str
     followers_count: Optional[int] = 0
     picture_url: Optional[str] = None
+
 
 class PageResponse(BaseModel):
     id: str

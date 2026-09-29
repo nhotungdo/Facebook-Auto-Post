@@ -6,7 +6,7 @@ from app.core.config import settings
 
 def _get_openai_client() -> OpenAI:
     return OpenAI(
-        api_key=settings.GROQ_API_KEY, 
+        api_key=settings.GROQ_API_KEY,
         base_url="https://api.groq.com/openai/v1"
     )
 
@@ -23,37 +23,53 @@ class AIStrategist:
             self.client = _get_openai_client()
 
     def generate_strategy(
-        self, business_goal: str, target_audience: str, historical_performance: Optional[str] = None
-    ) -> Optional[str]:
+        self, niche: str, target_audience: str, posts_per_week: int = 5
+    ) -> Optional[dict]:
         if not self.client:
-            return f"Mock Strategy for Goal: {business_goal}"
+            return {"pillars": ["Khuyến mãi",
+                                "Kiến thức",
+                                "Minigame"],
+                    "calendar": [{"day": "Thứ 2",
+                                  "time": "19:00",
+                                  "topic": "Giới thiệu sản phẩm mới",
+                                  "goal": "Tăng nhận diện"}]}
 
         prompt = f"""
         Bạn là một chuyên gia Marketing (AI Strategist).
-        Mục tiêu kinh doanh: {business_goal}
+        Lĩnh vực/Ngành hàng (Niche): {niche}
         Đối tượng mục tiêu: {target_audience}
-        """
-        
-        if historical_performance:
-            prompt += f"""
-        Dữ liệu hiệu suất bài đăng cũ (Historical Performance):
-        {historical_performance}
-        Dựa vào dữ liệu này, hãy điều chỉnh đề xuất để tập trung vào những dạng nội dung hoặc chủ đề từng mang lại hiệu quả cao.
-        """
+        Số bài đăng 1 tuần: {posts_per_week}
 
-        prompt += """
-        Hãy đề xuất một chiến lược nội dung gồm:
-        1. 3 chủ đề (Content Pillars) nên khai thác.
-        2. Tần suất và thời gian đăng bài tốt nhất.
+        Hãy đề xuất một chiến lược nội dung dưới định dạng JSON duy nhất. KHÔNG trả lời thêm văn bản.
+        Yêu cầu JSON format:
+        {{
+            "pillars": ["Tên chủ đề 1", "Tên chủ đề 2", "Tên chủ đề 3"],
+            "calendar": [
+                {{
+                    "day": "Thứ 2", // Ngày trong tuần
+                    "time": "19:00", // Khung giờ đăng tốt nhất
+                    "topic": "Mô tả ngắn gọn ý tưởng nội dung",
+                    "goal": "Mục tiêu (vd: Tương tác, Sale, Viral)"
+                }}
+                // Lặp lại để đủ số lượng bài đăng: {posts_per_week}
+            ]
+        }}
         """
         response = self.client.chat.completions.create(
             model="llama3-70b-8192",
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a helpful Marketing Strategist.",
+                    "content": "You are a helpful Marketing Strategist. Respond ONLY in valid JSON format.",
                 },
                 {"role": "user", "content": prompt},
             ],
+            response_format={"type": "json_object"}
         )
-        return response.choices[0].message.content
+        try:
+            import json
+            content_str = response.choices[0].message.content or "{}"
+            result = json.loads(content_str)
+            return result
+        except Exception as e:
+            return {"error": str(e)}

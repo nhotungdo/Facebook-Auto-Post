@@ -41,7 +41,9 @@ async def create_workspace(
         }).execute()
 
         if not ws_response.data or not isinstance(ws_response.data[0], dict):
-            raise HTTPException(status_code=400, detail="Failed to create workspace")
+            raise HTTPException(
+                status_code=400,
+                detail="Failed to create workspace")
 
         new_ws = ws_response.data[0]
         ws_id = str(new_ws.get("id"))

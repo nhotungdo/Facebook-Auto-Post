@@ -35,12 +35,14 @@ class SchedulePostResponse(BaseModel):
     post_id: str
     scheduled_at: str
 
+
 class PublishNowRequest(BaseModel):
     """Schema cho request đăng bài viết ngay lập tức."""
     page_id: str
     content: str
     media_url: Any = None
     workspace_id: Optional[str] = None
+
 
 class PublishNowResponse(BaseModel):
     """Schema cho response sau khi publish bài viết."""

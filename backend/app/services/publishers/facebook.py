@@ -6,6 +6,7 @@ from app.services.publishers.base import BasePublisher
 
 logger = logging.getLogger(__name__)
 
+
 class FacebookPublisher(BasePublisher):
     """
     Xử lý giao tiếp với Meta Graph API cho Facebook Page.
@@ -15,20 +16,28 @@ class FacebookPublisher(BasePublisher):
     def __init__(self) -> None:
         self.base_url = "https://graph.facebook.com/v20.0"
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10), reraise=True)
-    async def _execute_request_async(self, url: str, payload: dict[str, str]) -> httpx.Response:
+    @retry(stop=stop_after_attempt(3),
+           wait=wait_exponential(multiplier=1, min=2, max=10), reraise=True)
+    async def _execute_request_async(
+            self, url: str, payload: dict[str, str]) -> httpx.Response:
         async with httpx.AsyncClient() as client:
             response = await client.post(url, data=payload)
             if response.status_code in [429, 500, 502, 503, 504]:
-                raise Exception(f"Transient error {response.status_code} from FB API")
+                raise Exception(
+                    f"Transient error {
+                        response.status_code} from FB API")
             return response
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10), reraise=True)
-    def _execute_request_sync(self, url: str, payload: dict[str, str]) -> httpx.Response:
+    @retry(stop=stop_after_attempt(3),
+           wait=wait_exponential(multiplier=1, min=2, max=10), reraise=True)
+    def _execute_request_sync(
+            self, url: str, payload: dict[str, str]) -> httpx.Response:
         with httpx.Client() as client:
             response = client.post(url, data=payload)
             if response.status_code in [429, 500, 502, 503, 504]:
-                raise Exception(f"Transient error {response.status_code} from FB API")
+                raise Exception(
+                    f"Transient error {
+                        response.status_code} from FB API")
             return response
 
     async def post_to_page(
@@ -99,7 +108,8 @@ class FacebookPublisher(BasePublisher):
             logger.exception("Failed to connect to Facebook Graph API (Sync)")
             return {"success": False, "error": str(e)}
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10), reraise=True)
+    @retry(stop=stop_after_attempt(3),
+           wait=wait_exponential(multiplier=1, min=2, max=10), reraise=True)
     async def get_page_info(
         self, page_id: str, access_token: str
     ) -> dict[str, Any]:
@@ -111,21 +121,25 @@ class FacebookPublisher(BasePublisher):
                     "access_token": access_token,
                 }
                 response = await client.get(url, params=params)
-                
+
                 if response.status_code in [429, 500, 502, 503, 504]:
-                    raise Exception(f"Transient error {response.status_code} from FB API")
-                    
+                    raise Exception(
+                        f"Transient error {
+                            response.status_code} from FB API")
+
                 response_data: dict[str, Any] = response.json()
                 if response.status_code == 200:
                     return {"success": True, "data": response_data}
                 return {"success": False, "error": response_data}
         except Exception as e:
-            # We don't want to swallow exceptions that tenacity is catching before max attempts
+            # We don't want to swallow exceptions that tenacity is catching
+            # before max attempts
             if "Transient error" in str(e):
                 raise
             return {"success": False, "error": str(e)}
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10), reraise=True)
+    @retry(stop=stop_after_attempt(3),
+           wait=wait_exponential(multiplier=1, min=2, max=10), reraise=True)
     def get_post_analytics_sync(
         self, post_id: str, access_token: str
     ) -> dict[str, Any]:
@@ -137,10 +151,12 @@ class FacebookPublisher(BasePublisher):
                     "access_token": access_token,
                 }
                 response = client.get(url, params=params)
-                
+
                 if response.status_code in [429, 500, 502, 503, 504]:
-                    raise Exception(f"Transient error {response.status_code} from FB API")
-                    
+                    raise Exception(
+                        f"Transient error {
+                            response.status_code} from FB API")
+
                 response_data: dict[str, Any] = response.json()
                 if response.status_code == 200:
                     metrics = {}

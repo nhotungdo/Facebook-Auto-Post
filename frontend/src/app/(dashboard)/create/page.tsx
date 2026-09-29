@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { SocialPreview } from "@/components/SocialPreview"
 import { supabase } from "@/lib/supabase"
 import { useWorkspace } from "@/hooks/useWorkspace"
@@ -36,6 +37,8 @@ export default function CreatePost() {
   const [isScheduling, setIsScheduling] = React.useState(false)
   const [isGenerating, setIsGenerating] = React.useState(false)
   const [isRewriting, setIsRewriting] = React.useState(false)
+  const [rewriteVariants, setRewriteVariants] = React.useState<string[]>([])
+  const [showRewriteDialog, setShowRewriteDialog] = React.useState(false)
   const [isPublishing, setIsPublishing] = React.useState(false)
   const [userName, setUserName] = React.useState("")
   
@@ -137,8 +140,31 @@ export default function CreatePost() {
 
       if (!res.ok) throw new Error("Failed to generate")
       const data = await res.json()
-      setContent(data.data.content)
-      toast.success("Đã tạo nội dung thành công!")
+      
+      if (data.data.content) {
+        setContent(data.data.content)
+      }
+      
+      if (data.data.suggested_media && data.data.suggested_media.length > 0) {
+        try {
+          const imageUrl = data.data.suggested_media[0]
+          const imageRes = await fetch(imageUrl)
+          const blob = await imageRes.blob()
+          const file = new File([blob], "ai-generated-image.jpg", { type: "image/jpeg" })
+          setMedia([file])
+          toast.success("Đã tìm & đính kèm ảnh minh họa từ AIVisualAgent!")
+        } catch (e) {
+          console.error("Lỗi khi tải ảnh tự động", e)
+        }
+      }
+      
+      if (data.status === "warning") {
+        toast.warning(`Bài viết chưa đạt chuẩn 100%: ${data.data.status_message}`, {
+          duration: 6000,
+        })
+      } else {
+        toast.success("Tạo bài viết thành công (Đã qua kiểm duyệt AI)!")
+      }
     } catch (error: any) {
       console.error("Lỗi API Tạo bài:", error.message || error)
       toast.error(error.message === "Failed to fetch" ? "Không thể kết nối tới máy chủ AI (Backend đang tắt)." : "Lỗi khi sinh nội dung.")
@@ -162,27 +188,27 @@ export default function CreatePost() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error("Not logged in")
 
-      const res = await fetch(`${API_URL}/api/v1/posts/generate`, {
+      const res = await fetch(`${API_URL}/api/v1/ai/rewrite`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
-          goal: `Vui lòng viết lại nội dung sau đây sao cho hấp dẫn, thu hút và mới lạ hơn nhưng vẫn giữ nguyên thông điệp chính: "${content}"`,
+          original_content: content,
           tone: tone,
-          page_id: selectedPage,
-          workspace_id: workspaceId,
-          target_audience: targetAudience,
-          keywords: keywords,
-          length: length
+          num_variants: 3
         })
       })
 
       if (!res.ok) throw new Error("Failed to rewrite")
       const data = await res.json()
-      setContent(data.data.content)
-      toast.success("Đã viết lại nội dung thành công!")
+      if (data.status === "success" && data.variants && data.variants.length > 0) {
+        setRewriteVariants(data.variants)
+        setShowRewriteDialog(true)
+      } else {
+        toast.error("Không có phiên bản nào được tạo.")
+      }
     } catch (error: any) {
       console.error("Lỗi API Viết lại:", error.message || error)
       toast.error(error.message === "Failed to fetch" ? "Không thể kết nối tới máy chủ AI (Backend đang tắt)." : "Lỗi khi viết lại nội dung.")
@@ -565,6 +591,23 @@ export default function CreatePost() {
                   onChange={(e) => setScheduledAt(e.target.value)}
                 />
                 <Button 
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const tmr = new Date()
+                    tmr.setDate(tmr.getDate() + 1)
+                    tmr.setHours(19, 0, 0, 0)
+                    const tzoffset = tmr.getTimezoneOffset() * 60000;
+                    const localISOTime = (new Date(tmr.getTime() - tzoffset)).toISOString().slice(0, 16);
+                    setScheduledAt(localISOTime)
+                    toast.success("AI đã gợi ý khung giờ vàng (19:00) để đạt tương tác cao nhất!")
+                  }}
+                  className="px-2 border-purple-200 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                  title="AI Gợi ý giờ vàng"
+                >
+                  <Sparkles className="size-4 text-purple-600" />
+                </Button>
+                <Button 
                   onClick={handleSchedule}
                   disabled={isScheduling || !content || !selectedPage || !scheduledAt || isWorkspaceLoading}
                   className="bg-purple-600 hover:bg-purple-700 text-white"
@@ -591,6 +634,34 @@ export default function CreatePost() {
           </Card>
         </div>
       </div>
+
+      <Dialog open={showRewriteDialog} onOpenChange={setShowRewriteDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>AI đã viết lại nội dung của bạn</DialogTitle>
+            <DialogDescription>Chọn một phiên bản ưng ý nhất để thay thế nội dung cũ.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-4">
+            {rewriteVariants.map((variant, index) => (
+              <div key={index} className="relative p-4 rounded-xl border border-border bg-muted/30 hover:bg-muted/50 transition-colors group">
+                <p className="text-sm whitespace-pre-wrap pr-24">{variant}</p>
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button size="sm" onClick={() => {
+                    setContent(variant)
+                    setShowRewriteDialog(false)
+                    toast.success("Đã áp dụng nội dung mới!")
+                  }}>
+                    Dùng bản này
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRewriteDialog(false)}>Đóng</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

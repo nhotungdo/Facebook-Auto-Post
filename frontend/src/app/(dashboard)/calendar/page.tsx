@@ -1,11 +1,16 @@
 "use client"
 
 import * as React from "react"
-import { ChevronLeft, ChevronRight, CheckCircle2, Clock, AlertCircle, Loader2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, CheckCircle2, Clock, AlertCircle, Loader2, Sparkles, Lightbulb } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { supabase } from "@/lib/supabase"
+import { API_URL } from "@/lib/api"
+import { toast } from "sonner"
 
 // Bài đăng hiển thị trên lịch
 interface CalendarPost {
@@ -20,6 +25,45 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = React.useState(new Date())
   const [posts, setPosts] = React.useState<CalendarPost[]>([])
   const [isLoading, setIsLoading] = React.useState(false)
+
+  // AI Strategy states
+  const [showStrategyDialog, setShowStrategyDialog] = React.useState(false)
+  const [niche, setNiche] = React.useState("")
+  const [audience, setAudience] = React.useState("")
+  const [isGeneratingStrategy, setIsGeneratingStrategy] = React.useState(false)
+  const [strategyResult, setStrategyResult] = React.useState<any>(null)
+
+  const handleGenerateStrategy = async () => {
+    if (!niche || !audience) {
+      toast.error("Vui lòng nhập ngành hàng và đối tượng!")
+      return
+    }
+    setIsGeneratingStrategy(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+
+      const res = await fetch(`${API_URL}/api/v1/ai/strategy`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ niche, target_audience: audience, posts_per_week: 5 })
+      })
+      const data = await res.json()
+      if (res.ok && data.status === "success") {
+        setStrategyResult(data.data)
+        toast.success("Lập chiến lược thành công!")
+      } else {
+        toast.error("Không thể tạo chiến lược")
+      }
+    } catch (e: any) {
+      toast.error("Lỗi khi kết nối đến AI")
+    } finally {
+      setIsGeneratingStrategy(false)
+    }
+  }
 
   // Navigate months
   const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))
@@ -92,6 +136,10 @@ export default function CalendarPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="default" className="mr-4 bg-purple-600 hover:bg-purple-700 text-white" onClick={() => setShowStrategyDialog(true)}>
+            <Sparkles className="size-4 mr-2" />
+            AI Strategy
+          </Button>
           <Button variant="outline" size="icon" onClick={prevMonth}>
             <ChevronLeft className="size-4" />
           </Button>
@@ -161,6 +209,81 @@ export default function CalendarPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={showStrategyDialog} onOpenChange={setShowStrategyDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="size-5 text-purple-600" />
+              Lập Kế Hoạch Nội Dung Tự Động
+            </DialogTitle>
+            <DialogDescription>
+              Nhập thông tin trang của bạn để AI đề xuất các chủ đề và lịch trình đăng bài tối ưu.
+            </DialogDescription>
+          </DialogHeader>
+
+          {!strategyResult ? (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Lĩnh vực / Ngành hàng</Label>
+                <Input placeholder="VD: Thời trang nữ, Quán cà phê..." value={niche} onChange={e => setNiche(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Khách hàng mục tiêu</Label>
+                <Input placeholder="VD: Nhân viên văn phòng, 20-30 tuổi..." value={audience} onChange={e => setAudience(e.target.value)} />
+              </div>
+              <Button onClick={handleGenerateStrategy} disabled={isGeneratingStrategy} className="w-full bg-purple-600 hover:bg-purple-700 text-white">
+                {isGeneratingStrategy ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Sparkles className="size-4 mr-2" />}
+                Lên Chiến Lược Ngay
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-6 py-4">
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                  <Lightbulb className="size-5 text-yellow-500" />
+                  Các chủ đề chính (Content Pillars)
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {strategyResult.pillars?.map((pillar: string, i: number) => (
+                    <Badge key={i} variant="secondary" className="px-3 py-1 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                      {pillar}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                  <Clock className="size-5 text-blue-500" />
+                  Lịch trình đề xuất
+                </h3>
+                <div className="space-y-3">
+                  {strategyResult.calendar?.map((item: any, i: number) => (
+                    <div key={i} className="flex gap-4 p-4 rounded-xl border bg-card items-start hover:bg-muted/30 transition-colors">
+                      <div className="flex flex-col items-center justify-center bg-muted p-2 rounded-lg min-w-16">
+                        <span className="font-bold text-sm text-foreground">{item.day}</span>
+                        <span className="text-xs text-muted-foreground font-medium">{item.time}</span>
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <p className="font-semibold text-sm text-foreground">{item.topic}</p>
+                        <p className="text-xs text-muted-foreground">Mục tiêu: <span className="font-medium">{item.goal}</span></p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            {strategyResult && (
+              <Button variant="outline" onClick={() => setStrategyResult(null)}>Làm lại</Button>
+            )}
+            <Button variant="default" onClick={() => setShowStrategyDialog(false)}>Đóng</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

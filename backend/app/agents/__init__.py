@@ -5,9 +5,9 @@ from app.agents.reviewer import AIReviewer
 from app.agents.orchestrator import MultiAgentOrchestrator
 
 __all__ = [
-    "AIStrategist", 
-    "CopywriterAgent", 
-    "AIVisualAgent", 
-    "AIReviewer", 
+    "AIStrategist",
+    "CopywriterAgent",
+    "AIVisualAgent",
+    "AIReviewer",
     "MultiAgentOrchestrator"
 ]

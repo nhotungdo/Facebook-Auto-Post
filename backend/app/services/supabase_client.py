@@ -15,11 +15,11 @@ def get_supabase_client(auth_token: Optional[str] = None) -> Client:
         raise ValueError(
             "Supabase URL and Key must be provided in settings."
         )
-        
+
     options = ClientOptions()
     if auth_token:
         # Override header để truyền token của End User
         options.headers = {"Authorization": f"Bearer {auth_token}"}
-        
+
     supabase: Client = create_client(url, key, options=options)
     return supabase
