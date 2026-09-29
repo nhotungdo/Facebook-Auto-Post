@@ -39,7 +39,7 @@ class AIVisualAgent:
             """
 
             response = self.client.chat.completions.create(
-                model="llama3-70b-8192",
+                model="llama-3.3-70b-versatile",
                 messages=[
                     {"role": "system", "content": "You are an expert at writing Midjourney image prompts. Respond with ONLY the English keywords."},
                     {"role": "user", "content": prompt_instruction}

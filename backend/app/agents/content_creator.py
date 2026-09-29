@@ -41,7 +41,7 @@ class CopywriterAgent:
         - Sử dụng emoji phù hợp.
         """
         response = self.client.chat.completions.create(
-            model="llama3-70b-8192",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {
                     "role": "system",
@@ -83,7 +83,7 @@ class CopywriterAgent:
         - Giữ nguyên ý chính, nhưng thay đổi cách diễn đạt theo giọng văn yêu cầu.
         """
         response = self.client.chat.completions.create(
-            model="llama3-70b-8192",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {
                     "role": "system",
